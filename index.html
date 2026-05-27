@@ -875,12 +875,17 @@ function showAnalysisResult(r, silent) {
     const summe = r.sonstige_ausgaben.reduce((s, x) => s + (x.betrag || 0), 0);
     html += `<div class="ar-section-title">Sonstige Ausgaben (${fmtEuro(summe)})</div>`;
     r.sonstige_ausgaben.forEach((s, idx) => {
-      const topfLabel = s.topf === 'hausinvest' ? 'Hausinvest.' : s.topf === 'notfall' ? 'Notfall' : 'Monatlich';
+      const topf = s.topf || 'monatlich';
+      const topfLabel = topf === 'hausinvest' ? 'Hausinvest.' : topf === 'notfall' ? 'Notfall' : 'Monatlich';
+      const isAuto = topf === 'hausinvest' || topf === 'notfall';
+      const btnHtml = isAuto
+        ? `<span class="ar-topf-btn done">✓ ${topfLabel}</span>`
+        : `<button class="ar-topf-btn" id="topf-btn-${idx}" onclick="abziehenVonTopf('monatlich', ${s.betrag}, ${idx})">${topfLabel} −</button>`;
       html += `<div class="ar-status-row">
         <span class="ar-status-icon">💸</span>
         <span class="ar-status-label">${s.label}</span>
         <span class="ar-status-val warn" style="margin-right:6px">${fmtEuroCent(s.betrag)}</span>
-        <button class="ar-topf-btn" id="topf-btn-${idx}" onclick="abziehenVonTopf('${s.topf || 'monatlich'}', ${s.betrag}, ${idx})">${topfLabel} −</button>
+        ${btnHtml}
       </div>`;
     });
   }
@@ -915,6 +920,18 @@ function showAnalysisResult(r, silent) {
       if (CONFIG.toepfe.notfallRate > 0) {
         CONFIG.toepfe.notfall = parseFloat((CONFIG.toepfe.notfall + CONFIG.toepfe.notfallRate).toFixed(2));
         localStorage.setItem('bc_topf_notfall', CONFIG.toepfe.notfall);
+      }
+      if (r.sonstige_ausgaben) {
+        r.sonstige_ausgaben.forEach(s => {
+          if (!s.betrag || s.betrag <= 0) return;
+          if (s.topf === 'hausinvest') {
+            CONFIG.toepfe.hausinvest = Math.max(0, parseFloat((CONFIG.toepfe.hausinvest - s.betrag).toFixed(2)));
+            localStorage.setItem('bc_topf_hausinvest', CONFIG.toepfe.hausinvest);
+          } else if (s.topf === 'notfall') {
+            CONFIG.toepfe.notfall = Math.max(0, parseFloat((CONFIG.toepfe.notfall - s.betrag).toFixed(2)));
+            localStorage.setItem('bc_topf_notfall', CONFIG.toepfe.notfall);
+          }
+        });
       }
       updateTopfUI();
     }
