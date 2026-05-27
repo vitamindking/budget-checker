@@ -368,7 +368,7 @@ const GEHALT_SOLL  = 4845.28;
 const PUFFER_SOLL  = 90.85;
 
 const SCHULDEN_REF = {
-  tfBank:   { label: 'TF Bank Sofortgeld', betrag: 6400.00, rate: 310.00 },
+  tfBank:   { label: 'TF Bank Sofortgeld', betrag: 6200.00, rate: 310.00 },
   easyBank: { label: 'Easy Bank', betrag: 323.00, rate: 0, hinweis: 'Nach Teilzahlung 500€ Mai 2026 – Restschuld 323€' },
 };
 
@@ -395,10 +395,11 @@ const FIXKOSTEN_REF = [
 /* ─── CONFIG ─── */
 const DEFAULTS = { gehalt: GEHALT_SOLL, puffer: PUFFER_SOLL, namen: 'Benjamin & Victoria' };
 const CONFIG = {
-  gehalt: parseFloat(localStorage.getItem('bc_gehalt')) || DEFAULTS.gehalt,
-  puffer: parseFloat(localStorage.getItem('bc_puffer')) || DEFAULTS.puffer,
-  namen:  localStorage.getItem('bc_namen') || DEFAULTS.namen,
-  apiKey: localStorage.getItem('bc_apikey') || ''
+  gehalt:       parseFloat(localStorage.getItem('bc_gehalt'))        || DEFAULTS.gehalt,
+  puffer:       parseFloat(localStorage.getItem('bc_puffer'))        || DEFAULTS.puffer,
+  namen:        localStorage.getItem('bc_namen')                     || DEFAULTS.namen,
+  apiKey:       localStorage.getItem('bc_apikey')                    || '',
+  tfbankSchuld: parseFloat(localStorage.getItem('bc_tfbank_schuld')) || SCHULDEN_REF.tfBank.betrag,
 };
 
 const MONATE      = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
@@ -740,6 +741,19 @@ function showAnalysisResult(r, silent) {
     });
   }
 
+  /* Schuldenstand */
+  html += `<div class="ar-section-title">Schulden</div>`;
+  html += `<div class="ar-status-row">
+    <span class="ar-status-icon">📉</span>
+    <span class="ar-status-label">TF Bank Restschuld</span>
+    <span class="ar-status-val warn">${fmtEuroCent(CONFIG.tfbankSchuld)}</span>
+  </div>`;
+  html += `<div class="ar-status-row">
+    <span class="ar-status-icon">📉</span>
+    <span class="ar-status-label">Easy Bank Restschuld</span>
+    <span class="ar-status-val warn">${fmtEuroCent(SCHULDEN_REF.easyBank.betrag)}</span>
+  </div>`;
+
   /* Sonstige Ausgaben */
   if (r.sonstige_ausgaben && r.sonstige_ausgaben.length > 0) {
     const summe = r.sonstige_ausgaben.reduce((s, x) => s + (x.betrag || 0), 0);
@@ -764,6 +778,20 @@ function showAnalysisResult(r, silent) {
   document.getElementById('ar-hint').textContent = r.hinweis || '';
 
   _lastPuffer = puffer;
+
+  /* TF Bank Schuld bei neuem Upload (nicht bei gespeichertem Laden) reduzieren */
+  if (!silent && r.fixkosten) {
+    const lastMonth = localStorage.getItem('bc_last_analysis_month');
+    if (r.monat && r.monat !== lastMonth) {
+      const tf = r.fixkosten.find(f => f.label === 'TF Bank Rate');
+      if (tf && tf.gefunden) {
+        CONFIG.tfbankSchuld = Math.max(0, parseFloat((CONFIG.tfbankSchuld - tf.gefunden).toFixed(2)));
+        localStorage.setItem('bc_tfbank_schuld', CONFIG.tfbankSchuld);
+        localStorage.setItem('bc_last_analysis_month', r.monat);
+      }
+    }
+  }
+
   const btn = document.getElementById('ar-adopt-btn');
   btn.style.display = 'block';
   btn.disabled = false;
