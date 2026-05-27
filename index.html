@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Budget Checker</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;600;700;800&display=swap');
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: #0a0a10;
+  color: #f0f0f5;
+  min-height: 100vh;
+  padding: 32px 20px 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+h1 { font-family: 'DM Serif Display', serif; font-size: 28px; text-align: center; margin-bottom: 4px; }
+.subtitle { font-size: 13px; color: #555570; text-align: center; margin-bottom: 28px; }
+
+.gehalt-row {
+  width: 100%; max-width: 380px;
+  background: #13131e;
+  border-radius: 16px;
+  padding: 14px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  border: 1px solid #1e1e2e;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  user-select: none;
+}
+.gehalt-row:active { background: #1a1a28; }
+.gehalt-row:hover { border-color: #2e2e45; }
+.gehalt-row-left { display: flex; flex-direction: column; gap: 2px; }
+.gehalt-row .g-label { font-size: 13px; color: #555570; }
+.gehalt-row .g-amount { font-size: 20px; font-weight: 800; color: #00e5a0; }
+.gehalt-row .g-edit { font-size: 18px; opacity: 0.3; transition: opacity 0.2s; }
+.gehalt-row:hover .g-edit { opacity: 0.7; }
+
+.input-card {
+  width: 100%; max-width: 380px;
+  background: #13131e;
+  border-radius: 22px;
+  padding: 24px 20px;
+  border: 1px solid #1e1e2e;
+  margin-bottom: 16px;
+}
+.input-card label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #555570;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.input-card input {
+  width: 100%;
+  background: #0a0a10;
+  border: 2px solid #1e1e2e;
+  border-radius: 16px;
+  padding: 20px;
+  font-size: 42px;
+  font-weight: 800;
+  color: #fff;
+  font-family: 'DM Sans', sans-serif;
+  outline: none;
+  text-align: center;
+  transition: border-color 0.25s, box-shadow 0.25s;
+  margin-bottom: 14px;
+  letter-spacing: -1px;
+}
+.input-card input:focus { border-color: #2a2a3e; }
+.input-card input.live-ok   { border-color: #00e5a0; box-shadow: 0 0 0 3px rgba(0,229,160,0.08); }
+.input-card input.live-warn { border-color: #ffaa00; box-shadow: 0 0 0 3px rgba(255,170,0,0.08); }
+.input-card input.live-over { border-color: #ff4d6d; box-shadow: 0 0 0 3px rgba(255,77,109,0.08); }
+
+.puffer-bar-wrap {
+  margin-bottom: 16px;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 0.2s, transform 0.2s;
+}
+.puffer-bar-wrap.visible { opacity: 1; transform: translateY(0); }
+.puffer-bar-track {
+  width: 100%;
+  height: 7px;
+  background: #1e1e2e;
+  border-radius: 99px;
+  overflow: hidden;
+  margin-bottom: 7px;
+}
+.puffer-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  width: 0%;
+  transition: width 0.25s cubic-bezier(.4,0,.2,1), background 0.25s;
+  background: #00e5a0;
+}
+.puffer-bar-fill.warn { background: #ffaa00; }
+.puffer-bar-fill.over { background: #ff4d6d; }
+.puffer-bar-label { font-size: 12px; color: #555570; text-align: center; transition: color 0.25s; }
+.puffer-bar-label.warn { color: #ffaa00; }
+.puffer-bar-label.over { color: #ff4d6d; }
+
+.check-btn {
+  width: 100%;
+  padding: 18px;
+  border-radius: 16px;
+  border: none;
+  background: #00e5a0;
+  color: #000;
+  font-size: 17px;
+  font-weight: 800;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+.check-btn:active { transform: scale(0.97); opacity: 0.85; }
+
+.result {
+  width: 100%; max-width: 380px;
+  border-radius: 22px;
+  padding: 28px 22px;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  animation: pop 0.35s cubic-bezier(.17,.67,.35,1.3);
+  margin-bottom: 16px;
+  text-align: center;
+}
+.result.green  { background: #021a10; border: 2px solid #00e5a0; }
+.result.orange { background: #1a1200; border: 2px solid #ffaa00; }
+.result.red    { background: #1a0008; border: 2px solid #ff4d6d; }
+
+.r-icon   { font-size: 52px; line-height: 1; }
+.r-title  { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
+.result.green  .r-title { color: #00e5a0; }
+.result.orange .r-title { color: #ffaa00; }
+.result.red    .r-title { color: #ff4d6d; }
+.r-amount { font-size: 44px; font-weight: 800; letter-spacing: -2px; line-height: 1; }
+.result.green  .r-amount { color: #00e5a0; }
+.result.orange .r-amount { color: #ffaa00; }
+.result.red    .r-amount { color: #ff4d6d; }
+.r-msg { font-size: 15px; color: #9999bb; line-height: 1.65; }
+.r-msg strong { color: #f0f0f5; font-weight: 700; }
+
+.sparplan-toggle {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #9999bb;
+  cursor: pointer;
+  display: none;
+  justify-content: space-between;
+  align-items: center;
+  transition: background 0.15s;
+  user-select: none;
+}
+.sparplan-toggle:active { background: rgba(255,255,255,0.07); }
+.sparplan-chevron { transition: transform 0.25s; font-size: 12px; }
+.sparplan-chevron.open { transform: rotate(180deg); }
+
+.tip-box {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.35s cubic-bezier(.4,0,.2,1), padding 0.35s, opacity 0.25s;
+  opacity: 0;
+  padding: 0 18px;
+}
+.tip-box.open { max-height: 800px; opacity: 1; padding: 18px; }
+
+.tip-title { font-size: 14px; font-weight: 800; color: #f0f0f5; margin-bottom: 4px; }
+.tip-condition {
+  font-size: 12px; color: #ff4d6d; font-weight: 600;
+  margin-bottom: 14px; padding: 8px 12px;
+  background: rgba(255,77,109,0.1); border-radius: 10px;
+}
+.tip-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 14px;
+}
+.tip-row:last-of-type { border-bottom: none; }
+.tip-row .tr-label { color: #9999bb; }
+.tip-row .tr-val   { font-weight: 700; color: #f0f0f5; }
+.tip-total { margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.1); text-align: center; }
+.tip-total .tt-label  { font-size: 12px; color: #555570; margin-bottom: 6px; }
+.tip-total .tt-amount { font-size: 34px; font-weight: 800; color: #00e5a0; letter-spacing: -1px; }
+.tip-total .tt-check  { font-size: 14px; font-weight: 700; color: #00e5a0; margin-top: 6px; }
+
+.puffer-info {
+  width: 100%; max-width: 380px;
+  text-align: center; font-size: 12px; color: #3a3a55; margin-top: 8px;
+}
+
+.settings-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.65); z-index: 100;
+  align-items: flex-end; justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.settings-overlay.open { display: flex; }
+.settings-sheet {
+  width: 100%; max-width: 420px;
+  background: #13131e; border-radius: 24px 24px 0 0;
+  padding: 28px 24px 48px; border-top: 1px solid #1e1e2e;
+  animation: slideUp 0.28s cubic-bezier(.25,.8,.25,1);
+}
+.settings-handle { width: 36px; height: 4px; background: #2e2e45; border-radius: 99px; margin: 0 auto 24px; }
+.settings-title { font-size: 18px; font-weight: 800; margin-bottom: 22px; display: block; color: #f0f0f5; }
+.settings-field { margin-bottom: 16px; }
+.settings-field label {
+  display: block; font-size: 11px; font-weight: 700; color: #555570;
+  text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;
+}
+.settings-field input {
+  width: 100%; background: #0a0a10; border: 2px solid #1e1e2e;
+  border-radius: 14px; padding: 14px 18px; font-size: 20px; font-weight: 700;
+  color: #fff; font-family: 'DM Sans', sans-serif; outline: none; transition: border-color 0.2s;
+}
+.settings-field input:focus { border-color: #00e5a0; }
+.settings-note { text-align: center; font-size: 11px; color: #3a3a55; margin-top: 12px; }
+
+@keyframes pop {
+  from { opacity: 0; transform: scale(0.94) translateY(12px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+</style>
+</head>
+<body>
+
+<h1>💰 Budget Checker</h1>
+<p class="subtitle"></p>
+
+<div class="gehalt-row" onclick="openSettings()">
+  <div class="gehalt-row-left">
+    <span class="g-label">Monatliches Gehalt</span>
+    <span class="g-amount"></span>
+  </div>
+  <span class="g-edit">✏️</span>
+</div>
+
+<div class="input-card">
+  <label>Wie viel möchtest du ausgeben?</label>
+  <input type="text" id="amount" placeholder="0 €" inputmode="decimal" autocomplete="off" />
+  <div class="puffer-bar-wrap" id="puffer-bar-wrap">
+    <div class="puffer-bar-track">
+      <div class="puffer-bar-fill" id="puffer-bar-fill"></div>
+    </div>
+    <div class="puffer-bar-label" id="puffer-bar-label"></div>
+  </div>
+  <button class="check-btn" onclick="checkBudget()">Prüfen ✓</button>
+</div>
+
+<div class="result" id="result">
+  <div class="r-icon" id="r-icon"></div>
+  <div class="r-title" id="r-title"></div>
+  <div class="r-amount" id="r-amount"></div>
+  <div class="r-msg" id="r-msg"></div>
+  <button class="sparplan-toggle" id="sparplan-toggle" onclick="toggleSparplan()">
+    <span id="sparplan-toggle-text">📅 Sparplan anzeigen</span>
+    <span class="sparplan-chevron" id="sparplan-chevron">▾</span>
+  </button>
+  <div class="tip-box" id="tip-box">
+    <div class="tip-title" id="tip-title"></div>
+    <div class="tip-condition" id="tip-condition"></div>
+    <div id="tip-rows"></div>
+    <div class="tip-total">
+      <div class="tt-label">Dann hast du insgesamt</div>
+      <div class="tt-amount" id="tt-amount"></div>
+      <div class="tt-check" id="tt-check"></div>
+    </div>
+  </div>
+</div>
+
+<div class="puffer-info" id="puffer-info"></div>
+
+<div class="settings-overlay" id="settings-overlay" onclick="overlayClick(event)">
+  <div class="settings-sheet" id="settings-sheet">
+    <div class="settings-handle"></div>
+    <span class="settings-title">⚙️ Einstellungen</span>
+    <div class="settings-field">
+      <label>Monatliches Nettogehalt (€)</label>
+      <input type="text" id="s-gehalt" inputmode="decimal" placeholder="4845" />
+    </div>
+    <div class="settings-field">
+      <label>Verfügbarer Puffer pro Monat (€)</label>
+      <input type="text" id="s-puffer" inputmode="decimal" placeholder="96" />
+    </div>
+    <div class="settings-field">
+      <label>Name(n)</label>
+      <input type="text" id="s-namen" placeholder="Benjamin & Victoria" />
+    </div>
+    <button class="check-btn" onclick="saveSettings()">Speichern ✓</button>
+    <p class="settings-note">Gespeichert im Browser · kein Code nötig</p>
+  </div>
+</div>
+
+<script>
+const DEFAULTS = { gehalt: 4845, puffer: 96, namen: 'Benjamin & Victoria' };
+
+const CONFIG = {
+  gehalt: parseFloat(localStorage.getItem('bc_gehalt')) || DEFAULTS.gehalt,
+  puffer: parseFloat(localStorage.getItem('bc_puffer')) || DEFAULTS.puffer,
+  namen:  localStorage.getItem('bc_namen') || DEFAULTS.namen
+};
+
+const MONATE      = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+const MONATE_LANG = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+const fmtEuro = n => Math.round(n).toLocaleString('de-DE') + ' €';
+
+function parseInput(value) {
+  const c = value.replace(/[^\d.,]/g, '');
+  return parseFloat(c.replace(/\./g, '').replace(',', '.'));
+}
+
+function sparplanRows(monate) {
+  const now = new Date();
+  let html = '';
+  for (let i = 0; i < monate; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    html += `<div class="tip-row"><span class="tr-label">${MONATE[d.getMonth()]} ${d.getFullYear()}</span><span class="tr-val">+ ${fmtEuro(CONFIG.puffer)}</span></div>`;
+  }
+  return html;
+}
+
+function initUI() {
+  const now = new Date();
+  document.querySelector('.subtitle').textContent = `${CONFIG.namen} · Stand ${MONATE_LANG[now.getMonth()]} ${now.getFullYear()}`;
+  document.querySelector('.g-amount').textContent = fmtEuro(CONFIG.gehalt);
+  document.getElementById('puffer-info').textContent = `Verfügbarer Puffer diesen Monat: ${fmtEuro(CONFIG.puffer)}`;
+}
+
+document.getElementById('amount').addEventListener('input', function() {
+  const amount = parseInput(this.value);
+  const wrap = document.getElementById('puffer-bar-wrap');
+  const fill = document.getElementById('puffer-bar-fill');
+  const label = document.getElementById('puffer-bar-label');
+  const p = CONFIG.puffer;
+
+  this.classList.remove('live-ok', 'live-warn', 'live-over');
+
+  if (isNaN(amount) || amount <= 0 || this.value.trim() === '') {
+    wrap.classList.remove('visible');
+    return;
+  }
+
+  wrap.classList.add('visible');
+  const pct = amount / p;
+  fill.style.width = Math.min(pct * 100, 100) + '%';
+  fill.className = 'puffer-bar-fill';
+  label.className = 'puffer-bar-label';
+
+  if (pct <= 0.6) {
+    label.textContent = `${Math.round(pct * 100)} % des Puffers – passt locker ✓`;
+    this.classList.add('live-ok');
+  } else if (pct <= 1) {
+    fill.classList.add('warn'); label.classList.add('warn');
+    label.textContent = `${Math.round(pct * 100)} % des Puffers – geht gerade noch`;
+    this.classList.add('live-warn');
+  } else {
+    fill.classList.add('over'); label.classList.add('over');
+    label.textContent = `${Math.round(pct * 100)} % – braucht ${Math.ceil(pct)} Monate Puffer`;
+    this.classList.add('live-over');
+  }
+});
+
+function checkBudget() {
+  const amount = parseInput(document.getElementById('amount').value);
+  if (isNaN(amount) || amount <= 0) { alert('Bitte einen gültigen Betrag eingeben.'); return; }
+
+  const p = CONFIG.puffer;
+  const result  = document.getElementById('result');
+  const tipBox  = document.getElementById('tip-box');
+  const tipRows = document.getElementById('tip-rows');
+  const toggle  = document.getElementById('sparplan-toggle');
+  const chevron = document.getElementById('sparplan-chevron');
+
+  result.style.display = 'flex';
+  result.className = 'result';
+  tipBox.classList.remove('open');
+  toggle.style.display = 'none';
+  chevron.classList.remove('open');
+  tipRows.innerHTML = '';
+
+  const icon     = document.getElementById('r-icon');
+  const title    = document.getElementById('r-title');
+  const amountEl = document.getElementById('r-amount');
+  const msg      = document.getElementById('r-msg');
+  const tipTitle = document.getElementById('tip-title');
+  const tipCond  = document.getElementById('tip-condition');
+  const ttAmt    = document.getElementById('tt-amount');
+  const ttCheck  = document.getElementById('tt-check');
+
+  amountEl.textContent = fmtEuro(amount);
+  const monateNoetig = Math.ceil(amount / p);
+  const condText = `⚠️ Voraussetzung: Die ${fmtEuro(p)}, die jeden Monat übrig bleiben, nicht anfassen!`;
+
+  if (amount <= p) {
+    result.classList.add('green');
+    icon.textContent = '✅'; title.textContent = 'Ja, kein Problem!';
+    msg.innerHTML = `Passt rein! Danach hast du noch <strong>${fmtEuro(p - amount)}</strong> übrig diesen Monat.`;
+  } else if (monateNoetig === 2) {
+    result.classList.add('orange');
+    icon.textContent = '⏳'; title.textContent = 'Fast – noch 1 Monat sparen!';
+    msg.innerHTML = `<strong>${fmtEuro(amount)}</strong> geht diesen Monat noch nicht – aber nach dem nächsten Gehalt schon!`;
+    toggle.style.display = 'flex';
+    tipTitle.textContent = '📅 Spare 2 Monate – dann klappt es!';
+    tipCond.textContent = condText;
+    tipRows.innerHTML = sparplanRows(2);
+    ttAmt.textContent = fmtEuro(2 * p) + ' gespart';
+    ttCheck.textContent = '✓ ' + fmtEuro(amount) + ' passt dann rein!';
+  } else {
+    result.classList.add('red');
+    icon.textContent = '❌'; title.textContent = 'Leider nicht möglich 😔';
+    msg.innerHTML = `Spare <strong>${monateNoetig} Monate</strong> lang – dann kannst du dir <strong>${fmtEuro(amount)}</strong> leisten! 💪`;
+    toggle.style.display = 'flex';
+    tipTitle.textContent = `📅 Spare ${monateNoetig} Monate – dann klappt es!`;
+    tipCond.textContent = condText;
+    tipRows.innerHTML = sparplanRows(monateNoetig);
+    ttAmt.textContent = fmtEuro(monateNoetig * p) + ' gespart';
+    ttCheck.textContent = '✓ ' + fmtEuro(amount) + ' passt dann rein!';
+  }
+
+  result.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function toggleSparplan() {
+  const box = document.getElementById('tip-box');
+  const chevron = document.getElementById('sparplan-chevron');
+  const text = document.getElementById('sparplan-toggle-text');
+  const isOpen = box.classList.contains('open');
+  box.classList.toggle('open');
+  chevron.classList.toggle('open');
+  text.textContent = isOpen ? '📅 Sparplan anzeigen' : '📅 Sparplan verstecken';
+}
+
+function openSettings() {
+  document.getElementById('s-gehalt').value = CONFIG.gehalt;
+  document.getElementById('s-puffer').value = CONFIG.puffer;
+  document.getElementById('s-namen').value  = CONFIG.namen;
+  document.getElementById('settings-overlay').classList.add('open');
+}
+
+function closeSettings() {
+  document.getElementById('settings-overlay').classList.remove('open');
+}
+
+function overlayClick(e) {
+  if (e.target === document.getElementById('settings-overlay')) closeSettings();
+}
+
+function saveSettings() {
+  const gehalt = parseInput(document.getElementById('s-gehalt').value);
+  const puffer = parseInput(document.getElementById('s-puffer').value);
+  const namen  = document.getElementById('s-namen').value.trim();
+
+  if (!isNaN(gehalt) && gehalt > 0) { CONFIG.gehalt = gehalt; localStorage.setItem('bc_gehalt', gehalt); }
+  if (!isNaN(puffer) && puffer > 0) { CONFIG.puffer = puffer; localStorage.setItem('bc_puffer', puffer); }
+  if (namen) { CONFIG.namen = namen; localStorage.setItem('bc_namen', namen); }
+
+  closeSettings(); initUI();
+  document.getElementById('result').style.display = 'none';
+  document.getElementById('puffer-bar-wrap').classList.remove('visible');
+  document.getElementById('amount').value = '';
+  document.getElementById('amount').classList.remove('live-ok', 'live-warn', 'live-over');
+}
+
+document.getElementById('amount').addEventListener('keypress', e => { if (e.key === 'Enter') checkBudget(); });
+initUI();
+</script>
+
+</body>
+</html>
