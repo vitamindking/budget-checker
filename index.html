@@ -234,7 +234,7 @@ h1 { font-family: 'DM Serif Display', serif; font-size: 28px; text-align: center
     <div class="upload-text">PDF hochladen</div>
     <div class="upload-sub">Kontoauszug hochladen · alle Töpfe werden automatisch aktualisiert</div>
   </div>
-  <input type="file" id="pdf-input" accept=".pdf" style="display:none" onchange="handlePDFUpload(this.files[0])">
+  <input type="file" id="pdf-input" accept=".pdf" style="display:none" onchange="handlePDFUpload(this.files[0]); this.value=''">
 </div>
 
 <div class="upload-loading" id="upload-loading">
@@ -488,6 +488,11 @@ function checkBudget() {
   const ttAmt = document.getElementById('tt-amount'), ttCheck = document.getElementById('tt-check');
 
   amountEl.textContent = fmtEuroCent(amount);
+  if (p <= 0) {
+    result.classList.add('red'); icon.textContent = '❌'; title.textContent = 'Topf ist leer';
+    msg.innerHTML = `Der ${topfName}-Topf hat aktuell <strong>0 €</strong>. Lade einen neuen Kontoauszug hoch oder passe den Betrag in den Einstellungen an.`;
+    result.scrollIntoView({ behavior: 'smooth', block: 'center' }); return;
+  }
   const n = Math.ceil(amount / p);
   const cond = `⚠️ Topf: ${topfName} · Verfügbar: ${fmtEuroCent(p)}`;
 
@@ -646,7 +651,7 @@ TÖPFE (für Zuordnung sonstiger Ausgaben):
 - Notfallpuffer: ${CONFIG.toepfe.notfall.toFixed(2)} € (für unerwartete Ausgaben)
 
 KONTOAUSZUG:
-${bankText.substring(0, 10000)}
+${bankText.substring(0, 18000)}
 
 AUFGABE:
 1. Finde die Gehalts-Eingangsbuchung
@@ -689,7 +694,7 @@ Antworte NUR mit diesem JSON:
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': CONFIG.apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-    body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1500, messages: [{ role: 'user', content: prompt }] })
+    body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 2500, messages: [{ role: 'user', content: prompt }] })
   });
 
   if (!response.ok) {
