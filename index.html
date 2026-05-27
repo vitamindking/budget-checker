@@ -367,6 +367,11 @@ if (typeof pdfjsLib !== 'undefined') {
 const GEHALT_SOLL  = 4845.28;
 const PUFFER_SOLL  = 90.85;
 
+const SCHULDEN_REF = {
+  tfBank:   { label: 'TF Bank Sofortgeld', betrag: 6400.00, rate: 310.00 },
+  easyBank: { label: 'Easy Bank', betrag: 323.00, rate: 0, hinweis: 'Nach Teilzahlung 500€ Mai 2026 – Restschuld 323€' },
+};
+
 const FIXKOSTEN_REF = [
   { label: 'Miete kalt',              soll: 1500.00, empfaenger: 'Schamma' },
   { label: 'Gas',                     soll:  170.00, empfaenger: 'Knauber' },
@@ -609,11 +614,19 @@ ${fixkostenListe}
 KONTOAUSZUG-TEXT:
 ${bankText.substring(0, 10000)}
 
+SCHULDEN (Stand Mai 2026 nach Einmalzahlungen):
+- TF Bank Sofortgeld: 6.400,00 € (Rate 310 €/Monat bereits in Fixkosten)
+- Easy Bank: 323,00 € Restschuld (500 € Umzugszulage wurden im Mai 2026 getilgt, war 823 €)
+
+EINMALIGE ZAHLUNGEN MAI 2026 (nicht als reguläre Fixkosten werten):
+- Zulage Umzug 1: 689,99 € → 500 € Easy Bank getilgt, 300 € Hausinvestitionen, 222,99 € Notfallpuffer
+- Zulage Umzug 2: 333,00 € (aufgeteilt wie oben)
+
 AUFGABE:
 1. Finde die Gehalts-Eingangsbuchung (Kredit-Buchung von Glücks Krone GmbH)
 2. Für jede der 17 Fixkosten-Positionen: suche die entsprechende Abbuchung und notiere den tatsächlichen Betrag (toleriere leichte Namensabweichungen)
-3. Liste alle Ausgaben die keiner der 17 Positionen zugeordnet werden konnten als "sonstige_ausgaben"
-4. Berechne: puffer_verfuegbar = gehalt_gefunden − alle Ausgaben zusammen
+3. Liste alle Ausgaben die keiner der 17 Positionen zugeordnet werden konnten als "sonstige_ausgaben" (Umzugszulagen und Schulden-Tilgungen sind KEINE sonstigen Ausgaben – ignorieren)
+4. Berechne: puffer_verfuegbar = gehalt_gefunden − alle regulären Ausgaben zusammen
 
 Antworte NUR mit diesem JSON (kein Text davor oder danach):
 {
@@ -677,7 +690,7 @@ Antworte NUR mit diesem JSON (kein Text davor oder danach):
 
 let _lastPuffer = null;
 
-function showAnalysisResult(r) {
+function showAnalysisResult(r, silent) {
   const el = document.getElementById('analysis-result');
   el.className = 'analysis-result';
   el.style.display = 'flex';
@@ -756,7 +769,8 @@ function showAnalysisResult(r) {
   btn.disabled = false;
   btn.textContent = 'Puffer übernehmen ✓';
 
-  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  localStorage.setItem('bc_last_analysis', JSON.stringify(r));
+  if (!silent) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function showAnalysisError(msg) {
@@ -789,6 +803,14 @@ function adoptPuffer() {
 
 document.getElementById('amount').addEventListener('keypress', e => { if (e.key === 'Enter') checkBudget(); });
 initUI();
+
+/* ─── Gespeicherte Analyse beim Start laden ─── */
+(function() {
+  const saved = localStorage.getItem('bc_last_analysis');
+  if (saved) {
+    try { showAnalysisResult(JSON.parse(saved), true); } catch(e) { localStorage.removeItem('bc_last_analysis'); }
+  }
+})();
 </script>
 
 </body>
