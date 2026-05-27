@@ -343,6 +343,17 @@ h1 { font-family: 'DM Serif Display', serif; font-size: 28px; text-align: center
       <input type="text" id="s-namen" placeholder="Benjamin & Victoria" />
     </div>
 
+    <div class="settings-section">Geräte-Sync (JSONBin.io)</div>
+    <div class="settings-field">
+      <label>JSONBin Master Key</label>
+      <input type="password" id="s-synckey" class="apikey-input" placeholder="$2a$10b$..." autocomplete="off" />
+    </div>
+    <div class="settings-field">
+      <label>JSONBin Bin ID</label>
+      <input type="text" id="s-syncbin" class="apikey-input" placeholder="6650abc..." autocomplete="off" />
+      <div class="api-key-hint">jsonbin.io → kostenlosen Account erstellen → "Create Bin" → Master Key + Bin ID hier eintragen. Beide Geräte sehen dann immer denselben Stand.</div>
+    </div>
+
     <div class="settings-section">Claude API (für PDF-Analyse)</div>
     <div class="settings-field">
       <label>Anthropic API Key</label>
@@ -400,6 +411,8 @@ const CONFIG = {
   namen:        localStorage.getItem('bc_namen')                     || DEFAULTS.namen,
   apiKey:       localStorage.getItem('bc_apikey')                    || '',
   tfbankSchuld: parseFloat(localStorage.getItem('bc_tfbank_schuld')) || SCHULDEN_REF.tfBank.betrag,
+  syncKey: localStorage.getItem('bc_synckey') || '',
+  syncBin: localStorage.getItem('bc_syncbin') || '',
 };
 
 const MONATE      = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
@@ -529,7 +542,9 @@ function openSettings() {
   document.getElementById('s-gehalt').value = CONFIG.gehalt;
   document.getElementById('s-puffer').value = CONFIG.puffer;
   document.getElementById('s-namen').value  = CONFIG.namen;
-  document.getElementById('s-apikey').value = CONFIG.apiKey;
+  document.getElementById('s-apikey').value  = CONFIG.apiKey;
+  document.getElementById('s-synckey').value = CONFIG.syncKey;
+  document.getElementById('s-syncbin').value = CONFIG.syncBin;
   document.getElementById('settings-overlay').classList.add('open');
 }
 function closeSettings() { document.getElementById('settings-overlay').classList.remove('open'); }
@@ -544,6 +559,10 @@ function saveSettings() {
   if (!isNaN(puffer) && puffer >= 0) { CONFIG.puffer = puffer; localStorage.setItem('bc_puffer', puffer); }
   if (namen) { CONFIG.namen = namen; localStorage.setItem('bc_namen', namen); }
   if (apiKey) { CONFIG.apiKey = apiKey; localStorage.setItem('bc_apikey', apiKey); }
+  const syncKey = document.getElementById('s-synckey').value.trim();
+  const syncBin = document.getElementById('s-syncbin').value.trim();
+  if (syncKey) { CONFIG.syncKey = syncKey; localStorage.setItem('bc_synckey', syncKey); }
+  if (syncBin) { CONFIG.syncBin = syncBin; localStorage.setItem('bc_syncbin', syncBin); }
 
   closeSettings(); initUI();
   document.getElementById('result').style.display = 'none';
@@ -798,7 +817,7 @@ function showAnalysisResult(r, silent) {
   btn.textContent = 'Puffer übernehmen ✓';
 
   localStorage.setItem('bc_last_analysis', JSON.stringify(r));
-  if (!silent) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (!silent) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); syncPush(); }
 }
 
 function showAnalysisError(msg) {
@@ -823,21 +842,58 @@ function adoptPuffer() {
   const btn = document.getElementById('ar-adopt-btn');
   btn.textContent = `✓ Puffer auf ${fmtEuroCent(rounded)} gesetzt!`;
   btn.disabled = true;
+  syncPush();
   setTimeout(() => {
     btn.textContent = 'Puffer übernehmen ✓';
     btn.disabled = false;
   }, 3000);
 }
 
+/* ─── Geräte-Sync (JSONBin.io) ─── */
+async function syncPush() {
+  if (!CONFIG.syncKey || !CONFIG.syncBin) return;
+  const data = {
+    puffer: CONFIG.puffer,
+    tfbankSchuld: CONFIG.tfbankSchuld,
+    lastAnalysis: localStorage.getItem('bc_last_analysis') || null,
+    lastAnalysisMonth: localStorage.getItem('bc_last_analysis_month') || null,
+    updatedAt: new Date().toISOString()
+  };
+  try {
+    await fetch(`https://api.jsonbin.io/v3/b/${CONFIG.syncBin}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Master-Key': CONFIG.syncKey },
+      body: JSON.stringify(data)
+    });
+  } catch(e) {}
+}
+
+async function syncPull() {
+  if (!CONFIG.syncKey || !CONFIG.syncBin) return;
+  try {
+    const resp = await fetch(`https://api.jsonbin.io/v3/b/${CONFIG.syncBin}/latest`, {
+      headers: { 'X-Master-Key': CONFIG.syncKey }
+    });
+    if (!resp.ok) return;
+    const { record } = await resp.json();
+    if (record.puffer !== undefined)      { CONFIG.puffer = record.puffer; localStorage.setItem('bc_puffer', record.puffer); }
+    if (record.tfbankSchuld !== undefined) { CONFIG.tfbankSchuld = record.tfbankSchuld; localStorage.setItem('bc_tfbank_schuld', record.tfbankSchuld); }
+    if (record.lastAnalysis)               localStorage.setItem('bc_last_analysis', record.lastAnalysis);
+    if (record.lastAnalysisMonth)          localStorage.setItem('bc_last_analysis_month', record.lastAnalysisMonth);
+    initUI();
+    const saved = localStorage.getItem('bc_last_analysis');
+    if (saved) try { showAnalysisResult(JSON.parse(saved), true); } catch(e) {}
+  } catch(e) {}
+}
+
 document.getElementById('amount').addEventListener('keypress', e => { if (e.key === 'Enter') checkBudget(); });
 initUI();
 
-/* ─── Gespeicherte Analyse beim Start laden ─── */
+/* ─── Gespeicherte Analyse + Sync beim Start laden ─── */
 (function() {
   const saved = localStorage.getItem('bc_last_analysis');
-  if (saved) {
-    try { showAnalysisResult(JSON.parse(saved), true); } catch(e) { localStorage.removeItem('bc_last_analysis'); }
-  }
+  if (saved) try { showAnalysisResult(JSON.parse(saved), true); } catch(e) { localStorage.removeItem('bc_last_analysis'); }
+  syncPull();
 })();
 </script>
 
