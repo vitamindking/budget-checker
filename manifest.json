@@ -1,0 +1,13 @@
+{
+  "name": "Budget Checker",
+  "short_name": "Budget Checker",
+  "description": "Benjamin & Victoria – Kann ich mir das leisten?",
+  "start_url": "/budget-checker/",
+  "display": "standalone",
+  "background_color": "#0a0a10",
+  "theme_color": "#0a0a10",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "icon.png", "sizes": "1024x1024", "type": "image/png" }
+  ]
+}
