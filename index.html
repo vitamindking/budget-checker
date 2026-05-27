@@ -422,6 +422,16 @@ if (!localStorage.getItem('bc_mig_aok1_l')) {
   localStorage.setItem('bc_mig_aok1_l', '1');
 }
 
+// One-time migration: Reset nach fehlerhaftem PDF-Upload + 739,99€ Zulage Hausinvest
+if (!localStorage.getItem('bc_mig_pdf_reset_v1')) {
+  localStorage.setItem('bc_puffer',            PUFFER_SOLL);
+  localStorage.setItem('bc_topf_hausinvest',   739.99);
+  localStorage.setItem('bc_topf_notfall',      222.99);
+  localStorage.setItem('bc_aok_schuld',        2476.66);
+  localStorage.removeItem('bc_last_analysis');
+  localStorage.setItem('bc_mig_pdf_reset_v1', '1');
+}
+
 const _g = parseFloat(localStorage.getItem('bc_gehalt'));
 const _p = parseFloat(localStorage.getItem('bc_puffer'));
 const _hi = parseFloat(localStorage.getItem('bc_topf_hausinvest'));
@@ -844,14 +854,22 @@ TÖPFE (für Zuordnung sonstiger Ausgaben):
 - Hausinvestitionen: ${CONFIG.toepfe.hausinvest.toFixed(2)} € (für Haus/Wohnung/Renovierung)
 - Notfallpuffer: ${CONFIG.toepfe.notfall.toFixed(2)} € (für unerwartete Ausgaben)
 
+WICHTIGE REGELN (strikt einhalten):
+- AUSSCHLIESSEN aus sonstige_ausgaben: interne Überträge, Umbuchungen, "Sparen", "Pocket"-Transfers, Tagesgeld-Einzahlungen
+- NEGATIVE Beträge (−X€) = Rückerstattungen/Gutschriften → NICHT als Ausgabe zählen, stattdessen von Ausgaben abziehen
+- "Rückzahlung", "Rückerstattung", "Erstattung", "Auslage" (wenn eingehend) = eingehende Zahlungen → erhöhen puffer_verfuegbar
+- Bargeldabhebungen (Bargeldabhebung, ATM) → NICHT als Ausgabe in sonstige_ausgaben aufnehmen
+- Zahlungen an Easy Bank / TF Bank die NICHT den Fixkosten entsprechen → als eigene Zeile in sonstige_ausgaben, topf "monatlich", label klar beschriften
+- Bei Fixkosten: NUR den tatsächlich gematchten Betrag eintragen — kein Raten
+
 KONTOAUSZUG:
 ${bankText.substring(0, 18000)}
 
 AUFGABE:
-1. Finde die Gehalts-Eingangsbuchung
-2. Für jede der 17 Fixkosten: suche die Abbuchung und notiere den Betrag
-3. Liste alle anderen Ausgaben als "sonstige_ausgaben" mit vorgeschlagener Topf-Zuordnung ("hausinvest", "notfall" oder "monatlich")
-4. Berechne: puffer_verfuegbar = gehalt_gefunden − alle Ausgaben
+1. Finde die Gehalts-Eingangsbuchung (nur Eingang von Glücks Krone GmbH)
+2. Für jede der 18 Fixkosten: suche die Abbuchung und notiere den Betrag
+3. Liste echte Verbraucherausgaben als "sonstige_ausgaben" (keine internen Transfers, keine Abhebungen, keine Rückerstattungen)
+4. Berechne: puffer_verfuegbar = gehalt_gefunden + sonstige_einnahmen − fixkosten_gesamt − sonstige_ausgaben_gesamt
 
 Antworte NUR mit diesem JSON:
 {
@@ -1134,6 +1152,7 @@ async function syncPush() {
     easybankSchuld: CONFIG.easybankSchuld,
     aokSchuld: CONFIG.aokSchuld,
     mig_aok1: true,
+    mig_pdf_reset_v1: true,
     toepfeRates: { hausinvest: CONFIG.toepfe.hausinvestRate, notfall: CONFIG.toepfe.notfallRate },
     updatedAt: new Date().toISOString()
   };
@@ -1185,6 +1204,21 @@ async function syncPull() {
       if (record.toepfeRates.hausinvest !== undefined) { CONFIG.toepfe.hausinvestRate = record.toepfeRates.hausinvest; localStorage.setItem('bc_topf_hausinvest_rate', record.toepfeRates.hausinvest); }
       if (record.toepfeRates.notfall    !== undefined) { CONFIG.toepfe.notfallRate    = record.toepfeRates.notfall;    localStorage.setItem('bc_topf_notfall_rate', record.toepfeRates.notfall); }
     }
+
+    // One-time migration: Reset nach fehlerhaftem PDF-Upload (JSONBin-Seite)
+    if (!record.mig_pdf_reset_v1) {
+      CONFIG.puffer            = PUFFER_SOLL;
+      CONFIG.toepfe.hausinvest = 739.99;
+      CONFIG.toepfe.notfall    = 222.99;
+      CONFIG.aokSchuld         = SCHULDEN_REF.aok.betrag;
+      localStorage.setItem('bc_puffer',          PUFFER_SOLL);
+      localStorage.setItem('bc_topf_hausinvest', 739.99);
+      localStorage.setItem('bc_topf_notfall',    222.99);
+      localStorage.setItem('bc_aok_schuld',      SCHULDEN_REF.aok.betrag);
+      localStorage.removeItem('bc_last_analysis');
+      syncPush();
+    }
+
     initUI();
     const saved = localStorage.getItem('bc_last_analysis');
     if (saved) try { showAnalysisResult(JSON.parse(saved), true); } catch(e) {}
