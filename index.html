@@ -989,7 +989,7 @@ function showAnalysisResult(r, silent) {
 
   localStorage.setItem('bc_last_analysis', JSON.stringify(r));
   renderSchuldenplan();
-  if (!silent) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); syncPush(); }
+  if (!silent) { touchLocal(); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); syncPush(); }
 }
 
 function abziehenVonTopf(topf, betrag, idx) {
