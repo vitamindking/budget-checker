@@ -405,9 +405,11 @@ const FIXKOSTEN_REF = [
 
 /* ─── CONFIG ─── */
 const DEFAULTS = { gehalt: GEHALT_SOLL, puffer: PUFFER_SOLL, namen: 'Benjamin & Victoria' };
+const _g = parseFloat(localStorage.getItem('bc_gehalt'));
+const _p = parseFloat(localStorage.getItem('bc_puffer'));
 const CONFIG = {
-  gehalt:       parseFloat(localStorage.getItem('bc_gehalt'))        || DEFAULTS.gehalt,
-  puffer:       parseFloat(localStorage.getItem('bc_puffer'))        || DEFAULTS.puffer,
+  gehalt: (_g >= 1000 && _g <= 50000) ? _g : DEFAULTS.gehalt,
+  puffer: (_p >= 0   && _p <= 10000) ? _p : DEFAULTS.puffer,
   namen:        localStorage.getItem('bc_namen')                     || DEFAULTS.namen,
   apiKey:       localStorage.getItem('bc_apikey')                    || '',
   tfbankSchuld: parseFloat(localStorage.getItem('bc_tfbank_schuld')) || SCHULDEN_REF.tfBank.betrag,
@@ -555,8 +557,8 @@ function saveSettings() {
   const namen  = document.getElementById('s-namen').value.trim();
   const apiKey = document.getElementById('s-apikey').value.trim();
 
-  if (!isNaN(gehalt) && gehalt > 0) { CONFIG.gehalt = gehalt; localStorage.setItem('bc_gehalt', gehalt); }
-  if (!isNaN(puffer) && puffer >= 0) { CONFIG.puffer = puffer; localStorage.setItem('bc_puffer', puffer); }
+  if (!isNaN(gehalt) && gehalt >= 1000 && gehalt <= 50000) { CONFIG.gehalt = gehalt; localStorage.setItem('bc_gehalt', gehalt); }
+  if (!isNaN(puffer) && puffer >= 0   && puffer <= 10000) { CONFIG.puffer = puffer; localStorage.setItem('bc_puffer', puffer); }
   if (namen) { CONFIG.namen = namen; localStorage.setItem('bc_namen', namen); }
   if (apiKey) { CONFIG.apiKey = apiKey; localStorage.setItem('bc_apikey', apiKey); }
   const syncKey = document.getElementById('s-synckey').value.trim();
