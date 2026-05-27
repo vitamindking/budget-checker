@@ -275,6 +275,10 @@ h1 { font-family: 'DM Serif Display', serif; font-size: 28px; text-align: center
     <div class="ar-puffer-label">Monatlicher Puffer</div>
     <div class="ar-puffer-val" id="ar-puffer-val"></div>
   </div>
+  <div class="ar-split" id="ar-split-section" style="display:none">
+    <div class="ar-section-title">💡 Überschuss-Verteilung</div>
+    <div id="ar-split-rows"></div>
+  </div>
   <div class="ar-hint" id="ar-hint"></div>
   <button class="check-btn" id="ar-adopt-btn" onclick="adoptPuffer()" style="margin-top:8px;">Puffer übernehmen ✓</button>
 </div>
@@ -324,6 +328,20 @@ h1 { font-family: 'DM Serif Display', serif; font-size: 28px; text-align: center
     <div class="settings-field">
       <label>AOK Rückzahlung Restschuld (€)</label>
       <input type="text" id="s-aok" inputmode="decimal" placeholder="2476.66" />
+    </div>
+    <div class="settings-section">Überschuss-Verteilung</div>
+    <div class="settings-field">
+      <label>Notfall % (Standard: 50)</label>
+      <input type="text" id="s-split-notfall" inputmode="decimal" placeholder="50" />
+    </div>
+    <div class="settings-field">
+      <label>Hausinvest % (Standard: 25)</label>
+      <input type="text" id="s-split-hausinvest" inputmode="decimal" placeholder="25" />
+    </div>
+    <div class="settings-field">
+      <label>Monatlich % (Standard: 25)</label>
+      <input type="text" id="s-split-monatlich" inputmode="decimal" placeholder="25" />
+      <div class="api-key-hint">Summe muss nicht exakt 100 sein — wird automatisch proportional aufgeteilt.</div>
     </div>
     <div class="settings-field">
       <label>Name(n)</label>
@@ -410,8 +428,11 @@ const _hi = parseFloat(localStorage.getItem('bc_topf_hausinvest'));
 const _nf = parseFloat(localStorage.getItem('bc_topf_notfall'));
 const _hr = parseFloat(localStorage.getItem('bc_topf_hausinvest_rate'));
 const _nr = parseFloat(localStorage.getItem('bc_topf_notfall_rate'));
-const _eb = parseFloat(localStorage.getItem('bc_easybank_schuld'));
+const _eb  = parseFloat(localStorage.getItem('bc_easybank_schuld'));
 const _aok = parseFloat(localStorage.getItem('bc_aok_schuld'));
+const _sn  = parseFloat(localStorage.getItem('bc_split_notfall'));
+const _sh  = parseFloat(localStorage.getItem('bc_split_hausinvest'));
+const _sm  = parseFloat(localStorage.getItem('bc_split_monatlich'));
 const CONFIG = {
   gehalt:       (_g >= 1000 && _g <= 50000) ? _g : DEFAULTS.gehalt,
   puffer:       (isFinite(_p) && _p >= -10000 && _p <= 10000) ? _p : DEFAULTS.puffer,
@@ -428,6 +449,9 @@ const CONFIG = {
     hausinvestRate: (_hr >= 0 && _hr <= 10000)  ? _hr : 0,
     notfallRate:    (_nr >= 0 && _nr <= 10000)  ? _nr : 0,
   },
+  splitNotfall:    (_sn >= 0 && _sn <= 100) ? _sn : 50,
+  splitHausinvest: (_sh >= 0 && _sh <= 100) ? _sh : 25,
+  splitMonatlich:  (_sm >= 0 && _sm <= 100) ? _sm : 25,
   aktiverTopf: 'monatlich',
 };
 
@@ -709,6 +733,9 @@ function openSettings() {
   document.getElementById('s-notfall-rate').value    = CONFIG.toepfe.notfallRate;
   document.getElementById('s-easybank').value        = CONFIG.easybankSchuld;
   document.getElementById('s-aok').value             = CONFIG.aokSchuld;
+  document.getElementById('s-split-notfall').value    = CONFIG.splitNotfall;
+  document.getElementById('s-split-hausinvest').value = CONFIG.splitHausinvest;
+  document.getElementById('s-split-monatlich').value  = CONFIG.splitMonatlich;
   document.getElementById('s-namen').value           = CONFIG.namen;
   document.getElementById('s-apikey').value     = CONFIG.apiKey;
   document.getElementById('s-synckey').value    = CONFIG.syncKey;
@@ -739,6 +766,12 @@ function saveSettings() {
   if (!isNaN(notfallRate)    && notfallRate >= 0)    { CONFIG.toepfe.notfallRate    = notfallRate;    localStorage.setItem('bc_topf_notfall_rate', notfallRate); }
   if (!isNaN(easybank)       && easybank >= 0)       { CONFIG.easybankSchuld        = easybank;       localStorage.setItem('bc_easybank_schuld', easybank); }
   if (!isNaN(aokSchuld)      && aokSchuld >= 0)      { CONFIG.aokSchuld             = aokSchuld;      localStorage.setItem('bc_aok_schuld', aokSchuld); }
+  const splitNotfall    = parseFloat(document.getElementById('s-split-notfall').value.replace(',', '.'));
+  const splitHausinvest = parseFloat(document.getElementById('s-split-hausinvest').value.replace(',', '.'));
+  const splitMonatlich  = parseFloat(document.getElementById('s-split-monatlich').value.replace(',', '.'));
+  if (!isNaN(splitNotfall)    && splitNotfall >= 0)    { CONFIG.splitNotfall    = splitNotfall;    localStorage.setItem('bc_split_notfall', splitNotfall); }
+  if (!isNaN(splitHausinvest) && splitHausinvest >= 0) { CONFIG.splitHausinvest = splitHausinvest; localStorage.setItem('bc_split_hausinvest', splitHausinvest); }
+  if (!isNaN(splitMonatlich)  && splitMonatlich >= 0)  { CONFIG.splitMonatlich  = splitMonatlich;  localStorage.setItem('bc_split_monatlich', splitMonatlich); }
   if (namen)    { CONFIG.namen   = namen;   localStorage.setItem('bc_namen', namen); }
   if (apiKey)   { CONFIG.apiKey  = apiKey;  localStorage.setItem('bc_apikey', apiKey); }
   if (syncKey)  { CONFIG.syncKey = syncKey; localStorage.setItem('bc_synckey', syncKey); }
@@ -872,6 +905,7 @@ Antworte NUR mit diesem JSON:
 }
 
 let _lastPuffer = null;
+let _lastSplit  = null;
 let _pendingConfirm = null;
 
 function showAnalysisResult(r, silent) {
@@ -944,8 +978,35 @@ function showAnalysisResult(r, silent) {
   document.getElementById('ar-hint').textContent = r.hinweis || '';
 
   _lastPuffer = puffer;
+  _lastSplit  = null;
   const btn = document.getElementById('ar-adopt-btn');
-  btn.style.display = 'block'; btn.disabled = false; btn.textContent = 'Puffer übernehmen ✓';
+  btn.style.display = 'block'; btn.disabled = false;
+  const splitSection = document.getElementById('ar-split-section');
+  const splitRowsEl  = document.getElementById('ar-split-rows');
+
+  if (puffer > 0) {
+    // Überschuss: Easy Bank zuerst, dann 50/25/25 auf Töpfe
+    const ebDeduction = parseFloat(Math.min(puffer, CONFIG.easybankSchuld).toFixed(2));
+    const rest        = parseFloat((puffer - ebDeduction).toFixed(2));
+    const total       = (CONFIG.splitNotfall + CONFIG.splitHausinvest + CONFIG.splitMonatlich) || 100;
+    const notfallAdd    = parseFloat((rest * CONFIG.splitNotfall    / total).toFixed(2));
+    const hausinvestAdd = parseFloat((rest * CONFIG.splitHausinvest / total).toFixed(2));
+    const monatlichAdd  = parseFloat((rest - notfallAdd - hausinvestAdd).toFixed(2));
+    _lastSplit = { puffer, ebDeduction, notfallAdd, hausinvestAdd, monatlichAdd };
+
+    let sh = '';
+    if (ebDeduction > 0)
+      sh += `<div class="ar-status-row"><span class="ar-status-icon">💳</span><span class="ar-status-label">Easy Bank tilgen</span><span class="ar-status-val warn">−${fmtEuroCent(ebDeduction)}</span></div>`;
+    sh += `<div class="ar-status-row"><span class="ar-status-icon">🛡️</span><span class="ar-status-label">Notfallpuffer (+${CONFIG.splitNotfall}%)</span><span class="ar-status-val ok">+${fmtEuroCent(notfallAdd)}</span></div>`;
+    sh += `<div class="ar-status-row"><span class="ar-status-icon">🏠</span><span class="ar-status-label">Hausinvest (+${CONFIG.splitHausinvest}%)</span><span class="ar-status-val ok">+${fmtEuroCent(hausinvestAdd)}</span></div>`;
+    sh += `<div class="ar-status-row"><span class="ar-status-icon">💰</span><span class="ar-status-label">Monatlich (+${CONFIG.splitMonatlich}%)</span><span class="ar-status-val ok">${fmtEuroCent(monatlichAdd)}</span></div>`;
+    splitRowsEl.innerHTML = sh;
+    splitSection.style.display = '';
+    btn.textContent = 'Verteilung übernehmen ✓';
+  } else {
+    splitSection.style.display = 'none';
+    btn.textContent = 'Puffer übernehmen ✓';
+  }
 
   /* TF Bank Schuld bei neuem Upload pro Monat reduzieren */
   if (!silent && r.fixkosten) {
@@ -1026,15 +1087,35 @@ function showAnalysisError(msg) {
 
 function adoptPuffer() {
   if (_lastPuffer === null) return;
-  const rounded = parseFloat(_lastPuffer.toFixed(2));
-  CONFIG.puffer = rounded;
-  localStorage.setItem('bc_puffer', rounded);
-  updateTopfUI(); initUI();
   const btn = document.getElementById('ar-adopt-btn');
-  btn.textContent = `✓ Puffer auf ${fmtEuroCent(rounded)} gesetzt!`; btn.disabled = true;
-  touchLocal();
-  syncPush();
-  setTimeout(() => { btn.textContent = 'Puffer übernehmen ✓'; btn.disabled = false; }, 3000);
+
+  if (_lastSplit) {
+    // Überschuss-Verteilung anwenden
+    const { ebDeduction, notfallAdd, hausinvestAdd, monatlichAdd } = _lastSplit;
+    if (ebDeduction > 0) {
+      CONFIG.easybankSchuld = Math.max(0, parseFloat((CONFIG.easybankSchuld - ebDeduction).toFixed(2)));
+      localStorage.setItem('bc_easybank_schuld', CONFIG.easybankSchuld);
+    }
+    CONFIG.toepfe.notfall    = parseFloat((CONFIG.toepfe.notfall    + notfallAdd).toFixed(2));
+    CONFIG.toepfe.hausinvest = parseFloat((CONFIG.toepfe.hausinvest + hausinvestAdd).toFixed(2));
+    CONFIG.puffer            = monatlichAdd;
+    localStorage.setItem('bc_topf_notfall',    CONFIG.toepfe.notfall);
+    localStorage.setItem('bc_topf_hausinvest', CONFIG.toepfe.hausinvest);
+    localStorage.setItem('bc_puffer',          CONFIG.puffer);
+    updateTopfUI(); initUI(); renderSchuldenplan();
+    btn.textContent = '✓ Verteilung übernommen!'; btn.disabled = true;
+    touchLocal(); syncPush();
+    setTimeout(() => { btn.textContent = 'Verteilung übernehmen ✓'; btn.disabled = false; }, 3000);
+  } else {
+    // Kein Überschuss — negativen/Null-Puffer direkt setzen
+    const rounded = parseFloat(_lastPuffer.toFixed(2));
+    CONFIG.puffer = rounded;
+    localStorage.setItem('bc_puffer', rounded);
+    updateTopfUI(); initUI();
+    btn.textContent = `✓ Puffer auf ${fmtEuroCent(rounded)} gesetzt!`; btn.disabled = true;
+    touchLocal(); syncPush();
+    setTimeout(() => { btn.textContent = 'Puffer übernehmen ✓'; btn.disabled = false; }, 3000);
+  }
 }
 
 /* ─── Geräte-Sync ─── */
