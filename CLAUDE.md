@@ -103,33 +103,35 @@ Synct: puffer, tfbankSchuld, easybankSchuld, aokSchuld, toepfe (Beträge + Raten
 | `bc_last_analysis` | Letzter PDF-Analyse-JSON | – |
 | `bc_last_analysis_month` | Monat der letzten Analyse | – |
 
-## Finanzdaten Benjamin Hess (Mai 2026)
+## Finanzdaten Benjamin Hess (Stand Mai 2026 — nach Kontoauszug-Abgleich)
 - **Nettogehalt:** 4.845,28 € (von Glücks Krone GmbH, ca. 24.-27. des Monats)
-- **18 Fixkosten gesamt: 4.154,43 €**
+- **18 Fixkosten gesamt: 4.790,41 €**
 
-| Fixkosten | Betrag | Empfänger |
-|-----------|--------|-----------|
-| Miete kalt | 1.500,00 € | Schamma |
-| Gas | 170,00 € | Knauber |
-| Strom | 100,00 € | – |
-| Wasser + Wasserfilter | 55,00 € | Volkswasser |
-| Müllabholung | 40,00 € | – |
-| Krankenversicherung | 689,48 € | uniVersa |
-| Fitness | 36,00 € | MYNEOpur |
-| Internet | 53,00 € | 1&1 |
-| Apple Abos | 65,00 € | Apple |
-| Instagram Verified | 16,99 € | Meta |
-| CAYA Briefkasten | 12,99 € | CAYA |
-| Gmail 100GB | 1,99 € | Google |
-| Finanzguru Plus | 0,99 € | Finanzguru |
-| ALDI Talk | 2,99 € | ALDI |
-| TF Bank Rate | 310,00 € | TF Bank |
-| AOK Rückzahlung | 100,00 € | AOK |
-| Kindesunterhalt | 1.000,00 € | Rüya |
-| Lebensmittel & Drogerie | 700,00 € | – |
+| Fixkosten | Betrag | Empfänger | Hinweis |
+|-----------|--------|-----------|---------|
+| Miete kalt | 1.500,00 € | Schamma | |
+| Gas | 170,00 € | Knauber | |
+| Strom | 100,00 € | – | |
+| Wasser + Wasserfilter | 30,00 € | Volkswasser | 418 € war einmalig (Mai 26), danach 30 €/Mon |
+| Müllabholung | 40,00 € | – | |
+| Krankenversicherung | 689,48 € | uniVersa | |
+| Fitness | 36,00 € | MYNEOpur | |
+| Internet | 45,00 € | 1&1 | tatsächlicher Betrag laut Kontoauszug 44,42 € |
+| Apple Abos | 33,98 € | Apple | CapCut 23,99 + iCloud+ 9,99 (Rest in eigenen Zeilen) |
+| Instagram Verified | 16,99 € | Meta | |
+| CAYA Briefkasten | 12,99 € | CAYA | |
+| Gmail 100GB | 1,99 € | Google | |
+| Finanzguru Plus | 0,99 € | Finanzguru | |
+| ALDI Talk | 2,99 € | ALDI | |
+| TF Bank Rate | 310,00 € | TF Bank | |
+| AOK Rückzahlung | 100,00 € | AOK | |
+| Kindesunterhalt | 1.000,00 € | Rüya | |
+| Lebensmittel & Drogerie | 700,00 € | – | |
 
-- **Monatlicher Puffer:** −9,15 € (90,85 € − 100 € AOK-Rate → rechnerisch im Minus)
-- **Schulden:** TF Bank 6.200 € (Rate 310 €/Mon) · AOK Rückzahlung 2.476,66 € (Rate 100 €/Mon) · Easy Bank 377,44 € (flexibel)
+- **Monatlicher Basispuffer:** +54,87 € (4.845,28 − 4.790,41 €)
+- **Schulden:** TF Bank 6.200 € (Rate 310 €/Mon) · AOK Rückzahlung 2.476,66 € (Rate 100 €/Mon) · Easy Bank 0 € (getilgt Mai 2026)
+- **Töpfe (Stand nach Zulage-Verteilung Mai 2026):** Monatlich 346,38 € · Hausinvest 646,39 € · Notfall 652,68 €
+- **Gelaufene Migrations-Flags (nicht löschen):** bc_mig_aok1_l · bc_mig_pdf_reset_v1 · bc_mig_zulage_korrektur_v1 · bc_mig_mai26_v1
 
 ## Claude API Details
 - Model: `claude-haiku-4-5-20251001`
