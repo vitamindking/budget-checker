@@ -378,7 +378,7 @@ if (typeof pdfjsLib !== 'undefined') {
 
 /* ─── Referenz-Finanzdaten Benjamin Hess ─── */
 const GEHALT_SOLL = 4845.28;
-const PUFFER_SOLL = -9.15;
+const PUFFER_SOLL = 54.87;
 
 const SCHULDEN_REF = {
   tfBank:   { label: 'TF Bank Sofortgeld', betrag: 6200.00, rate: 310.00 },
@@ -396,12 +396,12 @@ const FIXKOSTEN_REF = [
   { label: 'Miete kalt',              soll: 1500.00, empfaenger: 'Schamma' },
   { label: 'Gas',                     soll:  170.00, empfaenger: 'Knauber' },
   { label: 'Strom',                   soll:  100.00, empfaenger: '' },
-  { label: 'Wasser + Wasserfilter',   soll:   55.00, empfaenger: 'Volkswasser' },
+  { label: 'Wasser + Wasserfilter',   soll:   30.00, empfaenger: 'Volkswasser' },
   { label: 'Müllabholung',            soll:   40.00, empfaenger: '' },
   { label: 'Krankenversicherung',     soll:  689.48, empfaenger: 'uniVersa' },
   { label: 'Fitness',                 soll:   36.00, empfaenger: 'MYNEOpur' },
-  { label: 'Internet',                soll:   53.00, empfaenger: '1&1' },
-  { label: 'Apple Abos',              soll:   65.00, empfaenger: 'Apple' },
+  { label: 'Internet',                soll:   45.00, empfaenger: '1&1' },
+  { label: 'Apple Abos',              soll:   33.98, empfaenger: 'Apple' },
   { label: 'Instagram Verified',      soll:   16.99, empfaenger: 'Meta' },
   { label: 'CAYA Briefkasten',        soll:   12.99, empfaenger: 'CAYA' },
   { label: 'Gmail 100GB',             soll:    1.99, empfaenger: 'Google' },
@@ -439,6 +439,12 @@ if (!localStorage.getItem('bc_mig_zulage_korrektur_v1')) {
   localStorage.setItem('bc_puffer',            346.38);
   localStorage.setItem('bc_easybank_schuld',   0);
   localStorage.setItem('bc_mig_zulage_korrektur_v1', '1');
+}
+// One-time migration: Mai 2026 Korrekturen — TF Bank reset 6200, BFS Arzt 263,08€ aus Notfall
+if (!localStorage.getItem('bc_mig_mai26_v1')) {
+  localStorage.setItem('bc_tfbank_schuld',  6200.00);
+  localStorage.setItem('bc_topf_notfall',   652.68);
+  localStorage.setItem('bc_mig_mai26_v1', '1');
 }
 
 const _g = parseFloat(localStorage.getItem('bc_gehalt'));
@@ -857,7 +863,7 @@ REFERENZ – Nettogehalt: ${GEHALT_SOLL.toFixed(2)} € (von "Glücks Krone GmbH
 REFERENZ – 18 Fixkosten (suche jede Position):
 ${fixkostenListe}
 
-SCHULDEN (Stand): TF Bank 6.200 € (Rate 310 €/Monat in Fixkosten), AOK Rückzahlung 2.476,66 € (Rate 100 €/Monat in Fixkosten), Easy Bank 377,44 €
+SCHULDEN (Stand): TF Bank ${CONFIG.tfbankSchuld.toFixed(2)} € (Rate 310 €/Monat in Fixkosten), AOK Rückzahlung ${CONFIG.aokSchuld.toFixed(2)} € (Rate 100 €/Monat in Fixkosten), Easy Bank ${CONFIG.easybankSchuld.toFixed(2)} €
 
 TÖPFE (für Zuordnung sonstiger Ausgaben):
 - Hausinvestitionen: ${CONFIG.toepfe.hausinvest.toFixed(2)} € (für Haus/Wohnung/Renovierung)
@@ -1163,6 +1169,7 @@ async function syncPush() {
     mig_aok1: true,
     mig_pdf_reset_v1: true,
     mig_zulage_korrektur_v1: true,
+    mig_mai26_v1: true,
     toepfeRates: { hausinvest: CONFIG.toepfe.hausinvestRate, notfall: CONFIG.toepfe.notfallRate },
     updatedAt: new Date().toISOString()
   };
@@ -1226,6 +1233,14 @@ async function syncPull() {
       localStorage.setItem('bc_topf_notfall',    222.99);
       localStorage.setItem('bc_aok_schuld',      SCHULDEN_REF.aok.betrag);
       localStorage.removeItem('bc_last_analysis');
+      syncPush();
+    }
+    // One-time migration: Mai 2026 Korrekturen (JSONBin-Seite)
+    if (!record.mig_mai26_v1) {
+      CONFIG.tfbankSchuld      = 6200.00;
+      CONFIG.toepfe.notfall    = 652.68;
+      localStorage.setItem('bc_tfbank_schuld', 6200.00);
+      localStorage.setItem('bc_topf_notfall',  652.68);
       syncPush();
     }
     // One-time migration: Zulage-Korrektur (JSONBin-Seite)
