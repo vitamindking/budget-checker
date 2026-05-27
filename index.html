@@ -133,6 +133,19 @@ h1 { font-family: 'DM Serif Display', serif; font-size: 28px; text-align: center
 .ar-puffer-val { font-size: 40px; font-weight: 800; color: #00e5a0; letter-spacing: -2px; }
 .ar-hint { font-size: 12px; color: #9999bb; line-height: 1.5; font-style: italic; padding-top: 4px; }
 
+/* ─── Finanzplan ─── */
+.fp-section-title { font-size: 10px; font-weight: 700; color: #3a3a55; text-transform: uppercase; letter-spacing: 1.5px; margin: 14px 0 6px; }
+.fp-row { display: flex; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); gap: 10px; }
+.fp-row:last-child { border-bottom: none; }
+.fp-icon { font-size: 18px; flex-shrink: 0; width: 24px; text-align: center; padding-top: 1px; }
+.fp-body { flex: 1; min-width: 0; }
+.fp-label { font-size: 14px; font-weight: 700; color: #f0f0f5; }
+.fp-detail { font-size: 12px; color: #9999bb; margin-top: 3px; line-height: 1.6; }
+.fp-badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 99px; flex-shrink: 0; align-self: flex-start; margin-top: 2px; white-space: nowrap; }
+.fp-badge.debt { background: rgba(255,77,109,0.15); color: #ff4d6d; }
+.fp-badge.save { background: rgba(0,229,160,0.15); color: #00e5a0; }
+.fp-badge.done { background: rgba(0,229,160,0.12); color: #00e5a0; }
+
 /* ─── Loading ─── */
 .upload-loading { text-align: center; padding: 32px 20px; display: none; color: #9999bb; font-size: 14px; }
 .loading-spinner { width: 36px; height: 36px; border: 3px solid #1e1e2e; border-top-color: #00e5a0; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
@@ -260,6 +273,12 @@ h1 { font-family: 'DM Serif Display', serif; font-size: 28px; text-align: center
   <button class="check-btn" id="ar-adopt-btn" onclick="adoptPuffer()" style="margin-top:8px;">Puffer übernehmen ✓</button>
 </div>
 
+<!-- Finanz-Vorschlag -->
+<div class="card" style="margin-top:8px;">
+  <label class="card-label">📊 Finanz-Vorschlag</label>
+  <div id="fp-rows"></div>
+</div>
+
 <!-- Settings -->
 <div class="settings-overlay" id="settings-overlay" onclick="overlayClick(event)">
   <div class="settings-sheet">
@@ -282,6 +301,19 @@ h1 { font-family: 'DM Serif Display', serif; font-size: 28px; text-align: center
     <div class="settings-field">
       <label>Notfallpuffer Topf (€)</label>
       <input type="text" id="s-notfall" inputmode="decimal" placeholder="222.99" />
+    </div>
+    <div class="settings-field">
+      <label>Hausinvest. Sparrate (€/Monat)</label>
+      <input type="text" id="s-hausinvest-rate" inputmode="decimal" placeholder="0" />
+      <div class="api-key-hint">Wird bei jedem neuen Kontoauszug automatisch zum Hausinvest-Topf addiert.</div>
+    </div>
+    <div class="settings-field">
+      <label>Notfall Sparrate (€/Monat)</label>
+      <input type="text" id="s-notfall-rate" inputmode="decimal" placeholder="0" />
+    </div>
+    <div class="settings-field">
+      <label>Easy Bank Restschuld (€)</label>
+      <input type="text" id="s-easybank" inputmode="decimal" placeholder="377.44" />
     </div>
     <div class="settings-field">
       <label>Name(n)</label>
@@ -357,17 +389,23 @@ const _g = parseFloat(localStorage.getItem('bc_gehalt'));
 const _p = parseFloat(localStorage.getItem('bc_puffer'));
 const _hi = parseFloat(localStorage.getItem('bc_topf_hausinvest'));
 const _nf = parseFloat(localStorage.getItem('bc_topf_notfall'));
+const _hr = parseFloat(localStorage.getItem('bc_topf_hausinvest_rate'));
+const _nr = parseFloat(localStorage.getItem('bc_topf_notfall_rate'));
+const _eb = parseFloat(localStorage.getItem('bc_easybank_schuld'));
 const CONFIG = {
   gehalt:       (_g >= 1000 && _g <= 50000) ? _g : DEFAULTS.gehalt,
   puffer:       (_p >= 0   && _p <= 10000) ? _p : DEFAULTS.puffer,
   namen:        localStorage.getItem('bc_namen')                     || DEFAULTS.namen,
   apiKey:       localStorage.getItem('bc_apikey')                    || '',
-  tfbankSchuld: parseFloat(localStorage.getItem('bc_tfbank_schuld')) || SCHULDEN_REF.tfBank.betrag,
+  tfbankSchuld:    parseFloat(localStorage.getItem('bc_tfbank_schuld')) || SCHULDEN_REF.tfBank.betrag,
+  easybankSchuld:  (_eb >= 0) ? _eb : SCHULDEN_REF.easyBank.betrag,
   syncKey:      localStorage.getItem('bc_synckey')                   || '',
   syncBin:      localStorage.getItem('bc_syncbin')                   || '',
   toepfe: {
-    hausinvest: (_hi >= 0 && _hi <= 100000) ? _hi : TOEPFE_DEFAULT.hausinvest.betrag,
-    notfall:    (_nf >= 0 && _nf <= 100000) ? _nf : TOEPFE_DEFAULT.notfall.betrag,
+    hausinvest:     (_hi >= 0 && _hi <= 100000) ? _hi : TOEPFE_DEFAULT.hausinvest.betrag,
+    notfall:        (_nf >= 0 && _nf <= 100000) ? _nf : TOEPFE_DEFAULT.notfall.betrag,
+    hausinvestRate: (_hr >= 0 && _hr <= 10000)  ? _hr : 0,
+    notfallRate:    (_nr >= 0 && _nr <= 10000)  ? _nr : 0,
   },
   aktiverTopf: 'monatlich',
 };
@@ -415,6 +453,7 @@ function initUI() {
   document.querySelector('.g-amount').textContent = fmtEuroCent(CONFIG.gehalt);
   document.getElementById('puffer-info').textContent = `Monatlicher Puffer: ${fmtEuroCent(CONFIG.puffer)} verfügbar`;
   updateTopfUI();
+  renderSchuldenplan();
 }
 
 function sparplanRows(monate) {
@@ -552,13 +591,86 @@ function confirmSpend() {
   syncPush();
 }
 
+/* ─── Finanz-Vorschlag ─── */
+function renderSchuldenplan() {
+  let html = '';
+
+  html += '<div class="fp-section-title">Schulden</div>';
+
+  if (CONFIG.tfbankSchuld > 0) {
+    const monate = Math.ceil(CONFIG.tfbankSchuld / SCHULDEN_REF.tfBank.rate);
+    const frei = new Date(); frei.setMonth(frei.getMonth() + monate);
+    const freiStr = MONATE_LANG[frei.getMonth()] + ' ' + frei.getFullYear();
+    html += `<div class="fp-row">
+      <span class="fp-icon">📉</span>
+      <div class="fp-body">
+        <div class="fp-label">TF Bank Sofortgeld</div>
+        <div class="fp-detail">310 €/Mon weiter zahlen · noch <strong>${monate} Monate</strong><br>✓ Schuldenfrei: <strong>${freiStr}</strong></div>
+      </div>
+      <span class="fp-badge debt">${fmtEuroCent(CONFIG.tfbankSchuld)}</span>
+    </div>`;
+  } else {
+    html += `<div class="fp-row"><span class="fp-icon">✅</span><div class="fp-body"><div class="fp-label">TF Bank</div><div class="fp-detail">Vollständig abbezahlt!</div></div><span class="fp-badge done">frei</span></div>`;
+  }
+
+  if (CONFIG.easybankSchuld > 0) {
+    let detail;
+    if (CONFIG.toepfe.notfall >= CONFIG.easybankSchuld) {
+      detail = `Einmalzahlung aus Notfallpuffer möglich (${fmtEuroCent(CONFIG.toepfe.notfall)} verfügbar)`;
+    } else {
+      const rate = Math.min(CONFIG.easybankSchuld, Math.max(50, Math.round(CONFIG.puffer / 2)));
+      const monate = Math.ceil(CONFIG.easybankSchuld / rate);
+      detail = `Vorschlag: <strong>${fmtEuroCent(rate)}/Monat</strong> → in <strong>${monate} Monaten</strong> schuldenfrei`;
+    }
+    html += `<div class="fp-row">
+      <span class="fp-icon">📉</span>
+      <div class="fp-body">
+        <div class="fp-label">Easy Bank (flexibel)</div>
+        <div class="fp-detail">${detail}</div>
+      </div>
+      <span class="fp-badge debt">${fmtEuroCent(CONFIG.easybankSchuld)}</span>
+    </div>`;
+  } else {
+    html += `<div class="fp-row"><span class="fp-icon">✅</span><div class="fp-body"><div class="fp-label">Easy Bank</div><div class="fp-detail">Vollständig abbezahlt!</div></div><span class="fp-badge done">frei</span></div>`;
+  }
+
+  if (CONFIG.toepfe.hausinvestRate > 0 || CONFIG.toepfe.notfallRate > 0) {
+    html += '<div class="fp-section-title">Monatliche Sparraten</div>';
+    if (CONFIG.toepfe.hausinvestRate > 0) {
+      html += `<div class="fp-row">
+        <span class="fp-icon">🏠</span>
+        <div class="fp-body">
+          <div class="fp-label">Hausinvestitionen</div>
+          <div class="fp-detail">+${fmtEuroCent(CONFIG.toepfe.hausinvestRate)}/Monat · Topf wächst automatisch<br>Aktueller Stand: <strong>${fmtEuroCent(CONFIG.toepfe.hausinvest)}</strong></div>
+        </div>
+        <span class="fp-badge save">+${fmtEuro(CONFIG.toepfe.hausinvestRate)}/Mon</span>
+      </div>`;
+    }
+    if (CONFIG.toepfe.notfallRate > 0) {
+      html += `<div class="fp-row">
+        <span class="fp-icon">🛡️</span>
+        <div class="fp-body">
+          <div class="fp-label">Notfallpuffer</div>
+          <div class="fp-detail">+${fmtEuroCent(CONFIG.toepfe.notfallRate)}/Monat · Topf wächst automatisch<br>Aktueller Stand: <strong>${fmtEuroCent(CONFIG.toepfe.notfall)}</strong></div>
+        </div>
+        <span class="fp-badge save">+${fmtEuro(CONFIG.toepfe.notfallRate)}/Mon</span>
+      </div>`;
+    }
+  }
+
+  document.getElementById('fp-rows').innerHTML = html;
+}
+
 /* ─── Einstellungen ─── */
 function openSettings() {
   document.getElementById('s-gehalt').value     = CONFIG.gehalt;
   document.getElementById('s-puffer').value     = CONFIG.puffer;
-  document.getElementById('s-hausinvest').value = CONFIG.toepfe.hausinvest;
-  document.getElementById('s-notfall').value    = CONFIG.toepfe.notfall;
-  document.getElementById('s-namen').value      = CONFIG.namen;
+  document.getElementById('s-hausinvest').value      = CONFIG.toepfe.hausinvest;
+  document.getElementById('s-notfall').value         = CONFIG.toepfe.notfall;
+  document.getElementById('s-hausinvest-rate').value = CONFIG.toepfe.hausinvestRate;
+  document.getElementById('s-notfall-rate').value    = CONFIG.toepfe.notfallRate;
+  document.getElementById('s-easybank').value        = CONFIG.easybankSchuld;
+  document.getElementById('s-namen').value           = CONFIG.namen;
   document.getElementById('s-apikey').value     = CONFIG.apiKey;
   document.getElementById('s-synckey').value    = CONFIG.syncKey;
   document.getElementById('s-syncbin').value    = CONFIG.syncBin;
@@ -580,6 +692,12 @@ function saveSettings() {
   if (!isNaN(puffer)     && puffer >= 0    && puffer <= 10000)   { CONFIG.puffer = puffer; localStorage.setItem('bc_puffer', puffer); }
   if (!isNaN(hausinvest) && hausinvest >= 0)  { CONFIG.toepfe.hausinvest = hausinvest; localStorage.setItem('bc_topf_hausinvest', hausinvest); }
   if (!isNaN(notfall)    && notfall >= 0)     { CONFIG.toepfe.notfall    = notfall;    localStorage.setItem('bc_topf_notfall', notfall); }
+  const hausinvestRate = parseFloat(document.getElementById('s-hausinvest-rate').value.replace(',', '.'));
+  const notfallRate    = parseFloat(document.getElementById('s-notfall-rate').value.replace(',', '.'));
+  const easybank       = parseFloat(document.getElementById('s-easybank').value.replace(',', '.'));
+  if (!isNaN(hausinvestRate) && hausinvestRate >= 0) { CONFIG.toepfe.hausinvestRate = hausinvestRate; localStorage.setItem('bc_topf_hausinvest_rate', hausinvestRate); }
+  if (!isNaN(notfallRate)    && notfallRate >= 0)    { CONFIG.toepfe.notfallRate    = notfallRate;    localStorage.setItem('bc_topf_notfall_rate', notfallRate); }
+  if (!isNaN(easybank)       && easybank >= 0)       { CONFIG.easybankSchuld        = easybank;       localStorage.setItem('bc_easybank_schuld', easybank); }
   if (namen)    { CONFIG.namen   = namen;   localStorage.setItem('bc_namen', namen); }
   if (apiKey)   { CONFIG.apiKey  = apiKey;  localStorage.setItem('bc_apikey', apiKey); }
   if (syncKey)  { CONFIG.syncKey = syncKey; localStorage.setItem('bc_synckey', syncKey); }
@@ -588,6 +706,7 @@ function saveSettings() {
   closeSettings(); initUI();
   selectTopf(CONFIG.aktiverTopf);
   document.getElementById('result').style.display = 'none';
+  renderSchuldenplan();
   syncPush();
 }
 
@@ -749,7 +868,7 @@ function showAnalysisResult(r, silent) {
   /* Schulden */
   html += `<div class="ar-section-title">Schulden</div>`;
   html += `<div class="ar-status-row"><span class="ar-status-icon">📉</span><span class="ar-status-label">TF Bank</span><span class="ar-status-val warn">${fmtEuroCent(CONFIG.tfbankSchuld)}</span></div>`;
-  html += `<div class="ar-status-row"><span class="ar-status-icon">📉</span><span class="ar-status-label">Easy Bank</span><span class="ar-status-val warn">${fmtEuroCent(SCHULDEN_REF.easyBank.betrag)}</span></div>`;
+  html += `<div class="ar-status-row"><span class="ar-status-icon">📉</span><span class="ar-status-label">Easy Bank</span><span class="ar-status-val warn">${fmtEuroCent(CONFIG.easybankSchuld)}</span></div>`;
 
   /* Sonstige Ausgaben */
   if (r.sonstige_ausgaben?.length) {
@@ -789,10 +908,20 @@ function showAnalysisResult(r, silent) {
         localStorage.setItem('bc_tfbank_schuld', CONFIG.tfbankSchuld);
         localStorage.setItem('bc_last_analysis_month', r.monat);
       }
+      if (CONFIG.toepfe.hausinvestRate > 0) {
+        CONFIG.toepfe.hausinvest = parseFloat((CONFIG.toepfe.hausinvest + CONFIG.toepfe.hausinvestRate).toFixed(2));
+        localStorage.setItem('bc_topf_hausinvest', CONFIG.toepfe.hausinvest);
+      }
+      if (CONFIG.toepfe.notfallRate > 0) {
+        CONFIG.toepfe.notfall = parseFloat((CONFIG.toepfe.notfall + CONFIG.toepfe.notfallRate).toFixed(2));
+        localStorage.setItem('bc_topf_notfall', CONFIG.toepfe.notfall);
+      }
+      updateTopfUI();
     }
   }
 
   localStorage.setItem('bc_last_analysis', JSON.stringify(r));
+  renderSchuldenplan();
   if (!silent) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); syncPush(); }
 }
 
@@ -848,6 +977,8 @@ async function syncPush() {
     toepfe: CONFIG.toepfe,
     lastAnalysis: localStorage.getItem('bc_last_analysis') || null,
     lastAnalysisMonth: localStorage.getItem('bc_last_analysis_month') || null,
+    easybankSchuld: CONFIG.easybankSchuld,
+    toepfeRates: { hausinvest: CONFIG.toepfe.hausinvestRate, notfall: CONFIG.toepfe.notfallRate },
     updatedAt: new Date().toISOString()
   };
   try {
@@ -875,6 +1006,11 @@ async function syncPull() {
     }
     if (record.lastAnalysis)      localStorage.setItem('bc_last_analysis', record.lastAnalysis);
     if (record.lastAnalysisMonth) localStorage.setItem('bc_last_analysis_month', record.lastAnalysisMonth);
+    if (record.easybankSchuld !== undefined) { CONFIG.easybankSchuld = record.easybankSchuld; localStorage.setItem('bc_easybank_schuld', record.easybankSchuld); }
+    if (record.toepfeRates) {
+      if (record.toepfeRates.hausinvest !== undefined) { CONFIG.toepfe.hausinvestRate = record.toepfeRates.hausinvest; localStorage.setItem('bc_topf_hausinvest_rate', record.toepfeRates.hausinvest); }
+      if (record.toepfeRates.notfall    !== undefined) { CONFIG.toepfe.notfallRate    = record.toepfeRates.notfall;    localStorage.setItem('bc_topf_notfall_rate', record.toepfeRates.notfall); }
+    }
     initUI();
     const saved = localStorage.getItem('bc_last_analysis');
     if (saved) try { showAnalysisResult(JSON.parse(saved), true); } catch(e) {}
