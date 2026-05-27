@@ -59,6 +59,10 @@ h1 { font-family: 'DM Serif Display', serif; font-size: 28px; text-align: center
 .check-btn { width: 100%; padding: 18px; border-radius: 16px; border: none; background: #00e5a0; color: #000; font-size: 17px; font-weight: 800; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: opacity 0.15s, transform 0.1s; }
 .check-btn:active { transform: scale(0.97); opacity: 0.85; }
 .check-btn:disabled { background: #1e1e2e; color: #555570; cursor: not-allowed; transform: none; }
+.confirm-btn { width: 100%; padding: 16px; border-radius: 16px; border: 2px solid #00e5a0; background: transparent; color: #00e5a0; font-size: 16px; font-weight: 800; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: opacity 0.15s, transform 0.1s, background 0.2s; margin-top: 2px; }
+.confirm-btn:active { transform: scale(0.97); background: rgba(0,229,160,0.1); }
+.confirm-btn:disabled { border-color: #1e1e2e; color: #555570; cursor: not-allowed; transform: none; background: transparent; }
+.confirm-btn.done { background: rgba(0,229,160,0.12); }
 
 /* ─── Ergebnis ─── */
 .result { width: 100%; max-width: 380px; border-radius: 22px; padding: 28px 22px; display: none; flex-direction: column; align-items: center; gap: 12px; animation: pop 0.35s cubic-bezier(.17,.67,.35,1.3); margin-bottom: 16px; text-align: center; }
@@ -199,6 +203,7 @@ h1 { font-family: 'DM Serif Display', serif; font-size: 28px; text-align: center
   <div class="r-title" id="r-title"></div>
   <div class="r-amount" id="r-amount"></div>
   <div class="r-msg" id="r-msg"></div>
+  <button class="confirm-btn" id="confirm-spend-btn" style="display:none" onclick="confirmSpend()">Ausgabe bestätigen ✓</button>
   <button class="sparplan-toggle" id="sparplan-toggle" onclick="toggleSparplan()">
     <span id="sparplan-toggle-text">📅 Sparplan anzeigen</span>
     <span class="sparplan-chevron" id="sparplan-chevron">▾</span>
@@ -390,9 +395,11 @@ function selectTopf(topf) {
   const label = topf === 'monatlich' ? 'Monatlicher Puffer' : topf === 'hausinvest' ? 'Hausinvestitionen' : 'Notfallpuffer';
   document.getElementById('check-label').textContent = `Aus "${label}" ausgeben?`;
   document.getElementById('result').style.display = 'none';
+  document.getElementById('confirm-spend-btn').style.display = 'none';
   document.getElementById('puffer-bar-wrap').classList.remove('visible');
   const inp = document.getElementById('amount');
   inp.value = ''; inp.classList.remove('live-ok','live-warn','live-over');
+  _pendingConfirm = null;
   document.getElementById('puffer-info').textContent = `${label}: ${fmtEuroCent(getAktiverTopfBetrag())} verfügbar`;
 }
 
@@ -470,6 +477,10 @@ function checkBudget() {
   toggle.style.display = 'none';
   chevron.classList.remove('open');
   tipRows.innerHTML = '';
+  const confirmBtn = document.getElementById('confirm-spend-btn');
+  confirmBtn.style.display = 'none'; confirmBtn.disabled = false;
+  confirmBtn.textContent = 'Ausgabe bestätigen ✓'; confirmBtn.classList.remove('done');
+  _pendingConfirm = null;
 
   const icon = document.getElementById('r-icon'), title = document.getElementById('r-title');
   const amountEl = document.getElementById('r-amount'), msg = document.getElementById('r-msg');
@@ -483,6 +494,8 @@ function checkBudget() {
   if (amount <= p) {
     result.classList.add('green'); icon.textContent = '✅'; title.textContent = 'Ja, kein Problem!';
     msg.innerHTML = `Aus <strong>${topfName}</strong> möglich! Danach noch <strong>${fmtEuroCent(p - amount)}</strong> im Topf.`;
+    _pendingConfirm = { amount, topf: CONFIG.aktiverTopf };
+    confirmBtn.style.display = 'block';
   } else if (CONFIG.aktiverTopf !== 'monatlich') {
     result.classList.add('red'); icon.textContent = '❌'; title.textContent = 'Topf reicht nicht';
     msg.innerHTML = `<strong>${fmtEuroCent(amount)}</strong> übersteigt den ${topfName}-Topf um <strong>${fmtEuroCent(amount - p)}</strong>.`;
@@ -509,6 +522,29 @@ function toggleSparplan() {
   const text = document.getElementById('sparplan-toggle-text'), isOpen = box.classList.contains('open');
   box.classList.toggle('open'); chevron.classList.toggle('open');
   text.textContent = isOpen ? '📅 Sparplan anzeigen' : '📅 Sparplan verstecken';
+}
+
+function confirmSpend() {
+  if (!_pendingConfirm) return;
+  const { amount, topf } = _pendingConfirm;
+  if (topf === 'hausinvest') {
+    CONFIG.toepfe.hausinvest = Math.max(0, parseFloat((CONFIG.toepfe.hausinvest - amount).toFixed(2)));
+    localStorage.setItem('bc_topf_hausinvest', CONFIG.toepfe.hausinvest);
+  } else if (topf === 'notfall') {
+    CONFIG.toepfe.notfall = Math.max(0, parseFloat((CONFIG.toepfe.notfall - amount).toFixed(2)));
+    localStorage.setItem('bc_topf_notfall', CONFIG.toepfe.notfall);
+  } else {
+    CONFIG.puffer = Math.max(0, parseFloat((CONFIG.puffer - amount).toFixed(2)));
+    localStorage.setItem('bc_puffer', CONFIG.puffer);
+  }
+  updateTopfUI();
+  const topfName = topf === 'monatlich' ? 'Monatlicher Puffer' : topf === 'hausinvest' ? 'Hausinvestitionen' : 'Notfallpuffer';
+  document.getElementById('r-msg').innerHTML = `✓ Ausgabe gebucht! Noch <strong>${fmtEuroCent(getAktiverTopfBetrag())}</strong> im ${topfName}-Topf.`;
+  document.getElementById('puffer-info').textContent = `${topfName}: ${fmtEuroCent(getAktiverTopfBetrag())} verfügbar`;
+  const btn = document.getElementById('confirm-spend-btn');
+  btn.textContent = `✓ ${fmtEuroCent(amount)} gebucht`; btn.classList.add('done'); btn.disabled = true;
+  _pendingConfirm = null;
+  syncPush();
 }
 
 /* ─── Einstellungen ─── */
@@ -669,6 +705,7 @@ Antworte NUR mit diesem JSON:
 }
 
 let _lastPuffer = null;
+let _pendingConfirm = null;
 
 function showAnalysisResult(r, silent) {
   const el = document.getElementById('analysis-result');
