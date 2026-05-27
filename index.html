@@ -322,6 +322,10 @@ h1 { font-family: 'DM Serif Display', serif; font-size: 28px; text-align: center
       <input type="text" id="s-easybank" inputmode="decimal" placeholder="377.44" />
     </div>
     <div class="settings-field">
+      <label>AOK Rückzahlung Restschuld (€)</label>
+      <input type="text" id="s-aok" inputmode="decimal" placeholder="2476.66" />
+    </div>
+    <div class="settings-field">
       <label>Name(n)</label>
       <input type="text" id="s-namen" placeholder="Benjamin & Victoria" />
     </div>
@@ -356,11 +360,12 @@ if (typeof pdfjsLib !== 'undefined') {
 
 /* ─── Referenz-Finanzdaten Benjamin Hess ─── */
 const GEHALT_SOLL = 4845.28;
-const PUFFER_SOLL = 90.85;
+const PUFFER_SOLL = -9.15;
 
 const SCHULDEN_REF = {
   tfBank:   { label: 'TF Bank Sofortgeld', betrag: 6200.00, rate: 310.00 },
   easyBank: { label: 'Easy Bank',          betrag: 377.44,  rate: 0 },
+  aok:      { label: 'AOK Rückzahlung',    betrag: 2476.66, rate: 100.00 },
 };
 
 const TOEPFE_DEFAULT = {
@@ -385,12 +390,20 @@ const FIXKOSTEN_REF = [
   { label: 'Finanzguru Plus',         soll:    0.99, empfaenger: 'Finanzguru' },
   { label: 'ALDI Talk',               soll:    2.99, empfaenger: 'ALDI' },
   { label: 'TF Bank Rate',            soll:  310.00, empfaenger: 'TF Bank' },
+  { label: 'AOK Rückzahlung',         soll:  100.00, empfaenger: 'AOK' },
   { label: 'Kindesunterhalt',         soll: 1000.00, empfaenger: 'Rüya' },
   { label: 'Lebensmittel & Drogerie', soll:  700.00, empfaenger: '' },
 ];
 
 /* ─── CONFIG ─── */
 const DEFAULTS = { gehalt: GEHALT_SOLL, puffer: PUFFER_SOLL, namen: 'Benjamin & Victoria' };
+
+// One-time migration: AOK Rückzahlung added — stale puffer zurücksetzen
+if (!localStorage.getItem('bc_mig_aok1_l')) {
+  localStorage.removeItem('bc_puffer');
+  localStorage.setItem('bc_mig_aok1_l', '1');
+}
+
 const _g = parseFloat(localStorage.getItem('bc_gehalt'));
 const _p = parseFloat(localStorage.getItem('bc_puffer'));
 const _hi = parseFloat(localStorage.getItem('bc_topf_hausinvest'));
@@ -398,13 +411,15 @@ const _nf = parseFloat(localStorage.getItem('bc_topf_notfall'));
 const _hr = parseFloat(localStorage.getItem('bc_topf_hausinvest_rate'));
 const _nr = parseFloat(localStorage.getItem('bc_topf_notfall_rate'));
 const _eb = parseFloat(localStorage.getItem('bc_easybank_schuld'));
+const _aok = parseFloat(localStorage.getItem('bc_aok_schuld'));
 const CONFIG = {
   gehalt:       (_g >= 1000 && _g <= 50000) ? _g : DEFAULTS.gehalt,
-  puffer:       (_p >= 0   && _p <= 10000) ? _p : DEFAULTS.puffer,
+  puffer:       (isFinite(_p) && _p >= -10000 && _p <= 10000) ? _p : DEFAULTS.puffer,
   namen:        localStorage.getItem('bc_namen')                     || DEFAULTS.namen,
   apiKey:       localStorage.getItem('bc_apikey')                    || '',
   tfbankSchuld:    parseFloat(localStorage.getItem('bc_tfbank_schuld')) || SCHULDEN_REF.tfBank.betrag,
   easybankSchuld:  (_eb >= 0) ? _eb : SCHULDEN_REF.easyBank.betrag,
+  aokSchuld:       (_aok >= 0) ? _aok : SCHULDEN_REF.aok.betrag,
   syncKey:      localStorage.getItem('bc_synckey')                   || '',
   syncBin:      localStorage.getItem('bc_syncbin')                   || '',
   toepfe: {
@@ -619,6 +634,22 @@ function renderSchuldenplan() {
     html += `<div class="fp-row"><span class="fp-icon">✅</span><div class="fp-body"><div class="fp-label">TF Bank</div><div class="fp-detail">Vollständig abbezahlt!</div></div><span class="fp-badge done">frei</span></div>`;
   }
 
+  if (CONFIG.aokSchuld > 0) {
+    const monate = Math.ceil(CONFIG.aokSchuld / SCHULDEN_REF.aok.rate);
+    const frei = new Date(); frei.setMonth(frei.getMonth() + monate);
+    const freiStr = MONATE_LANG[frei.getMonth()] + ' ' + frei.getFullYear();
+    html += `<div class="fp-row">
+      <span class="fp-icon">📉</span>
+      <div class="fp-body">
+        <div class="fp-label">AOK Rückzahlung</div>
+        <div class="fp-detail">100 €/Mon weiter zahlen · noch <strong>${monate} Monate</strong><br>✓ Schuldenfrei: <strong>${freiStr}</strong></div>
+      </div>
+      <span class="fp-badge debt">${fmtEuroCent(CONFIG.aokSchuld)}</span>
+    </div>`;
+  } else {
+    html += `<div class="fp-row"><span class="fp-icon">✅</span><div class="fp-body"><div class="fp-label">AOK Rückzahlung</div><div class="fp-detail">Vollständig abbezahlt!</div></div><span class="fp-badge done">frei</span></div>`;
+  }
+
   if (CONFIG.easybankSchuld > 0) {
     let detail;
     if (CONFIG.toepfe.notfall >= CONFIG.easybankSchuld) {
@@ -676,6 +707,7 @@ function openSettings() {
   document.getElementById('s-hausinvest-rate').value = CONFIG.toepfe.hausinvestRate;
   document.getElementById('s-notfall-rate').value    = CONFIG.toepfe.notfallRate;
   document.getElementById('s-easybank').value        = CONFIG.easybankSchuld;
+  document.getElementById('s-aok').value             = CONFIG.aokSchuld;
   document.getElementById('s-namen').value           = CONFIG.namen;
   document.getElementById('s-apikey').value     = CONFIG.apiKey;
   document.getElementById('s-synckey').value    = CONFIG.syncKey;
@@ -695,15 +727,17 @@ function saveSettings() {
   const syncBin    = document.getElementById('s-syncbin').value.trim();
 
   if (!isNaN(gehalt)     && gehalt >= 1000 && gehalt <= 50000)   { CONFIG.gehalt = gehalt; localStorage.setItem('bc_gehalt', gehalt); }
-  if (!isNaN(puffer)     && puffer >= 0    && puffer <= 10000)   { CONFIG.puffer = puffer; localStorage.setItem('bc_puffer', puffer); }
+  if (!isNaN(puffer)     && puffer >= -10000 && puffer <= 10000)  { CONFIG.puffer = puffer; localStorage.setItem('bc_puffer', puffer); }
   if (!isNaN(hausinvest) && hausinvest >= 0)  { CONFIG.toepfe.hausinvest = hausinvest; localStorage.setItem('bc_topf_hausinvest', hausinvest); }
   if (!isNaN(notfall)    && notfall >= 0)     { CONFIG.toepfe.notfall    = notfall;    localStorage.setItem('bc_topf_notfall', notfall); }
   const hausinvestRate = parseFloat(document.getElementById('s-hausinvest-rate').value.replace(',', '.'));
   const notfallRate    = parseFloat(document.getElementById('s-notfall-rate').value.replace(',', '.'));
   const easybank       = parseFloat(document.getElementById('s-easybank').value.replace(',', '.'));
+  const aokSchuld      = parseFloat(document.getElementById('s-aok').value.replace(',', '.'));
   if (!isNaN(hausinvestRate) && hausinvestRate >= 0) { CONFIG.toepfe.hausinvestRate = hausinvestRate; localStorage.setItem('bc_topf_hausinvest_rate', hausinvestRate); }
   if (!isNaN(notfallRate)    && notfallRate >= 0)    { CONFIG.toepfe.notfallRate    = notfallRate;    localStorage.setItem('bc_topf_notfall_rate', notfallRate); }
   if (!isNaN(easybank)       && easybank >= 0)       { CONFIG.easybankSchuld        = easybank;       localStorage.setItem('bc_easybank_schuld', easybank); }
+  if (!isNaN(aokSchuld)      && aokSchuld >= 0)      { CONFIG.aokSchuld             = aokSchuld;      localStorage.setItem('bc_aok_schuld', aokSchuld); }
   if (namen)    { CONFIG.namen   = namen;   localStorage.setItem('bc_namen', namen); }
   if (apiKey)   { CONFIG.apiKey  = apiKey;  localStorage.setItem('bc_apikey', apiKey); }
   if (syncKey)  { CONFIG.syncKey = syncKey; localStorage.setItem('bc_synckey', syncKey); }
@@ -766,10 +800,10 @@ async function callClaudeAPI(bankText) {
 
 REFERENZ – Nettogehalt: ${GEHALT_SOLL.toFixed(2)} € (von "Glücks Krone GmbH", ca. 24.-27. des Monats)
 
-REFERENZ – 17 Fixkosten (suche jede Position):
+REFERENZ – 18 Fixkosten (suche jede Position):
 ${fixkostenListe}
 
-SCHULDEN (Stand): TF Bank 6.200 € (Rate 310 €/Monat in Fixkosten), Easy Bank 377,44 €
+SCHULDEN (Stand): TF Bank 6.200 € (Rate 310 €/Monat in Fixkosten), AOK Rückzahlung 2.476,66 € (Rate 100 €/Monat in Fixkosten), Easy Bank 377,44 €
 
 TÖPFE (für Zuordnung sonstiger Ausgaben):
 - Hausinvestitionen: ${CONFIG.toepfe.hausinvest.toFixed(2)} € (für Haus/Wohnung/Renovierung)
@@ -805,6 +839,7 @@ Antworte NUR mit diesem JSON:
     { "label": "Finanzguru Plus", "soll": 0.99, "gefunden": Zahl_oder_null },
     { "label": "ALDI Talk", "soll": 2.99, "gefunden": Zahl_oder_null },
     { "label": "TF Bank Rate", "soll": 310.00, "gefunden": Zahl_oder_null },
+    { "label": "AOK Rückzahlung", "soll": 100.00, "gefunden": Zahl_oder_null },
     { "label": "Kindesunterhalt", "soll": 1000.00, "gefunden": Zahl_oder_null },
     { "label": "Lebensmittel & Drogerie", "soll": 700.00, "gefunden": Zahl_oder_null }
   ],
@@ -874,6 +909,7 @@ function showAnalysisResult(r, silent) {
   /* Schulden */
   html += `<div class="ar-section-title">Schulden</div>`;
   html += `<div class="ar-status-row"><span class="ar-status-icon">📉</span><span class="ar-status-label">TF Bank</span><span class="ar-status-val warn">${fmtEuroCent(CONFIG.tfbankSchuld)}</span></div>`;
+  html += `<div class="ar-status-row"><span class="ar-status-icon">📉</span><span class="ar-status-label">AOK Rückzahlung</span><span class="ar-status-val warn">${fmtEuroCent(CONFIG.aokSchuld)}</span></div>`;
   html += `<div class="ar-status-row"><span class="ar-status-icon">📉</span><span class="ar-status-label">Easy Bank</span><span class="ar-status-val warn">${fmtEuroCent(CONFIG.easybankSchuld)}</span></div>`;
 
   /* Sonstige Ausgaben */
@@ -917,6 +953,12 @@ function showAnalysisResult(r, silent) {
       if (tf?.gefunden) {
         CONFIG.tfbankSchuld = Math.max(0, parseFloat((CONFIG.tfbankSchuld - tf.gefunden).toFixed(2)));
         localStorage.setItem('bc_tfbank_schuld', CONFIG.tfbankSchuld);
+        localStorage.setItem('bc_last_analysis_month', r.monat);
+      }
+      const aok = r.fixkosten.find(f => f.label === 'AOK Rückzahlung');
+      if (aok?.gefunden) {
+        CONFIG.aokSchuld = Math.max(0, parseFloat((CONFIG.aokSchuld - aok.gefunden).toFixed(2)));
+        localStorage.setItem('bc_aok_schuld', CONFIG.aokSchuld);
         localStorage.setItem('bc_last_analysis_month', r.monat);
       }
       if (CONFIG.toepfe.hausinvestRate > 0) {
@@ -981,7 +1023,7 @@ function showAnalysisError(msg) {
 
 function adoptPuffer() {
   if (_lastPuffer === null) return;
-  const rounded = Math.max(0, parseFloat(_lastPuffer.toFixed(2)));
+  const rounded = parseFloat(_lastPuffer.toFixed(2));
   CONFIG.puffer = rounded;
   localStorage.setItem('bc_puffer', rounded);
   updateTopfUI(); initUI();
@@ -1001,6 +1043,8 @@ async function syncPush() {
     lastAnalysis: localStorage.getItem('bc_last_analysis') || null,
     lastAnalysisMonth: localStorage.getItem('bc_last_analysis_month') || null,
     easybankSchuld: CONFIG.easybankSchuld,
+    aokSchuld: CONFIG.aokSchuld,
+    mig_aok1: true,
     toepfeRates: { hausinvest: CONFIG.toepfe.hausinvestRate, notfall: CONFIG.toepfe.notfallRate },
     updatedAt: new Date().toISOString()
   };
@@ -1021,7 +1065,17 @@ async function syncPull() {
     });
     if (!resp.ok) return;
     const { record } = await resp.json();
-    if (record.puffer !== undefined)       { CONFIG.puffer = record.puffer; localStorage.setItem('bc_puffer', record.puffer); }
+    if (record.puffer !== undefined) {
+      if (!record.mig_aok1) {
+        // Alter JSONBin-Stand (vor AOK-Migration): ehrlichen Referenzwert setzen
+        CONFIG.puffer = PUFFER_SOLL;
+        localStorage.setItem('bc_puffer', PUFFER_SOLL);
+        syncPush();
+      } else {
+        CONFIG.puffer = record.puffer;
+        localStorage.setItem('bc_puffer', record.puffer);
+      }
+    }
     if (record.tfbankSchuld !== undefined)  { CONFIG.tfbankSchuld = record.tfbankSchuld; localStorage.setItem('bc_tfbank_schuld', record.tfbankSchuld); }
     if (record.toepfe) {
       if (record.toepfe.hausinvest !== undefined) { CONFIG.toepfe.hausinvest = record.toepfe.hausinvest; localStorage.setItem('bc_topf_hausinvest', record.toepfe.hausinvest); }
@@ -1030,6 +1084,7 @@ async function syncPull() {
     if (record.lastAnalysis)      localStorage.setItem('bc_last_analysis', record.lastAnalysis);
     if (record.lastAnalysisMonth) localStorage.setItem('bc_last_analysis_month', record.lastAnalysisMonth);
     if (record.easybankSchuld !== undefined) { CONFIG.easybankSchuld = record.easybankSchuld; localStorage.setItem('bc_easybank_schuld', record.easybankSchuld); }
+    if (record.aokSchuld !== undefined) { CONFIG.aokSchuld = record.aokSchuld; localStorage.setItem('bc_aok_schuld', record.aokSchuld); }
     if (record.toepfeRates) {
       if (record.toepfeRates.hausinvest !== undefined) { CONFIG.toepfe.hausinvestRate = record.toepfeRates.hausinvest; localStorage.setItem('bc_topf_hausinvest_rate', record.toepfeRates.hausinvest); }
       if (record.toepfeRates.notfall    !== undefined) { CONFIG.toepfe.notfallRate    = record.toepfeRates.notfall;    localStorage.setItem('bc_topf_notfall_rate', record.toepfeRates.notfall); }

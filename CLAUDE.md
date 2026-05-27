@@ -51,7 +51,7 @@ Topf antippen → Input und Prüfung beziehen sich auf diesen Topf.
 
 ### PDF-Upload + Claude API
 - Kontoauszug hochladen → Claude (Haiku) analysiert automatisch
-- Erkennt: Gehalt, alle 17 Fixkosten, sonstige Ausgaben
+- Erkennt: Gehalt, alle 18 Fixkosten, sonstige Ausgaben
 - Sonstige Ausgaben → Claude schlägt Topf vor (monatlich/hausinvest/notfall)
 - **hausinvest/notfall Ausgaben** → werden bei neuem Monat **automatisch abgezogen**
 - **monatlich Ausgaben** → manueller "Topf abziehen"-Button
@@ -64,7 +64,7 @@ Topf antippen → Input und Prüfung beziehen sich auf diesen Topf.
 - Sparraten: Zeigt monatliche Raten + aktuellen Topf-Stand (nur wenn > 0 konfiguriert)
 
 ### Geräte-Sync (JSONBin.io)
-Synct: puffer, tfbankSchuld, easybankSchuld, toepfe (Beträge + Raten), lastAnalysis, lastAnalysisMonth
+Synct: puffer, tfbankSchuld, easybankSchuld, aokSchuld, toepfe (Beträge + Raten), lastAnalysis, lastAnalysisMonth
 - Push: nach PDF-Upload, Ausgabe bestätigen, Puffer übernehmen, Einstellungen speichern
 - Pull: beim App-Start
 
@@ -74,6 +74,7 @@ Synct: puffer, tfbankSchuld, easybankSchuld, toepfe (Beträge + Raten), lastAnal
 - Hausinvest. Topf-Betrag (€) + Sparrate (€/Monat)
 - Notfall Topf-Betrag (€) + Sparrate (€/Monat)
 - Easy Bank Restschuld (€)
+- AOK Rückzahlung Restschuld (€)
 - Name(n)
 - JSONBin Master Key + Bin ID
 - Anthropic API Key
@@ -92,6 +93,7 @@ Synct: puffer, tfbankSchuld, easybankSchuld, toepfe (Beträge + Raten), lastAnal
 | `bc_apikey` | Anthropic API Key | – |
 | `bc_tfbank_schuld` | TF Bank Restschuld (dynamisch) | 6200.00 |
 | `bc_easybank_schuld` | Easy Bank Restschuld (dynamisch) | 377.44 |
+| `bc_aok_schuld` | AOK Rückzahlung Restschuld (dynamisch) | 2476.66 |
 | `bc_synckey` | JSONBin Master Key | – |
 | `bc_syncbin` | JSONBin Bin ID | – |
 | `bc_topf_hausinvest` | Hausinvest Topf-Stand | 300.00 |
@@ -103,7 +105,7 @@ Synct: puffer, tfbankSchuld, easybankSchuld, toepfe (Beträge + Raten), lastAnal
 
 ## Finanzdaten Benjamin Hess (Mai 2026)
 - **Nettogehalt:** 4.845,28 € (von Glücks Krone GmbH, ca. 24.-27. des Monats)
-- **17 Fixkosten gesamt: 4.054,43 €**
+- **18 Fixkosten gesamt: 4.154,43 €**
 
 | Fixkosten | Betrag | Empfänger |
 |-----------|--------|-----------|
@@ -122,11 +124,12 @@ Synct: puffer, tfbankSchuld, easybankSchuld, toepfe (Beträge + Raten), lastAnal
 | Finanzguru Plus | 0,99 € | Finanzguru |
 | ALDI Talk | 2,99 € | ALDI |
 | TF Bank Rate | 310,00 € | TF Bank |
+| AOK Rückzahlung | 100,00 € | AOK |
 | Kindesunterhalt | 1.000,00 € | Rüya |
 | Lebensmittel & Drogerie | 700,00 € | – |
 
-- **Monatlicher Puffer:** 90,85 €
-- **Schulden:** TF Bank 6.200 € (Rate 310 €/Mon) · Easy Bank 377,44 € (flexibel)
+- **Monatlicher Puffer:** −9,15 € (90,85 € − 100 € AOK-Rate → rechnerisch im Minus)
+- **Schulden:** TF Bank 6.200 € (Rate 310 €/Mon) · AOK Rückzahlung 2.476,66 € (Rate 100 €/Mon) · Easy Bank 377,44 € (flexibel)
 
 ## Claude API Details
 - Model: `claude-haiku-4-5-20251001`
