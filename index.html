@@ -431,6 +431,15 @@ if (!localStorage.getItem('bc_mig_pdf_reset_v1')) {
   localStorage.removeItem('bc_last_analysis');
   localStorage.setItem('bc_mig_pdf_reset_v1', '1');
 }
+// One-time migration: Zulage-Korrektur — 3 Auslagen (739,99+333+689,99=1.762,98€) korrekt 50/25/25 verteilt
+// Easy Bank (377,44) getilgt → Rest 1.385,54 → Notfall 50%=692,77 · Hausinvest 25%=346,39 · Monatlich 25%=346,38
+if (!localStorage.getItem('bc_mig_zulage_korrektur_v1')) {
+  localStorage.setItem('bc_topf_hausinvest',   646.39);
+  localStorage.setItem('bc_topf_notfall',      915.76);
+  localStorage.setItem('bc_puffer',            346.38);
+  localStorage.setItem('bc_easybank_schuld',   0);
+  localStorage.setItem('bc_mig_zulage_korrektur_v1', '1');
+}
 
 const _g = parseFloat(localStorage.getItem('bc_gehalt'));
 const _p = parseFloat(localStorage.getItem('bc_puffer'));
@@ -1153,6 +1162,7 @@ async function syncPush() {
     aokSchuld: CONFIG.aokSchuld,
     mig_aok1: true,
     mig_pdf_reset_v1: true,
+    mig_zulage_korrektur_v1: true,
     toepfeRates: { hausinvest: CONFIG.toepfe.hausinvestRate, notfall: CONFIG.toepfe.notfallRate },
     updatedAt: new Date().toISOString()
   };
@@ -1216,6 +1226,18 @@ async function syncPull() {
       localStorage.setItem('bc_topf_notfall',    222.99);
       localStorage.setItem('bc_aok_schuld',      SCHULDEN_REF.aok.betrag);
       localStorage.removeItem('bc_last_analysis');
+      syncPush();
+    }
+    // One-time migration: Zulage-Korrektur (JSONBin-Seite)
+    if (!record.mig_zulage_korrektur_v1) {
+      CONFIG.toepfe.hausinvest = 646.39;
+      CONFIG.toepfe.notfall    = 915.76;
+      CONFIG.puffer            = 346.38;
+      CONFIG.easybankSchuld    = 0;
+      localStorage.setItem('bc_topf_hausinvest', 646.39);
+      localStorage.setItem('bc_topf_notfall',    915.76);
+      localStorage.setItem('bc_puffer',          346.38);
+      localStorage.setItem('bc_easybank_schuld', 0);
       syncPush();
     }
 
