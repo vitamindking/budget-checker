@@ -150,23 +150,48 @@ h1 { font-family: 'DM Serif Display', serif; font-size: 28px; text-align: center
 
 /* ─── Analyse Ergebnis ─── */
 .analysis-result {
-  width: 100%; max-width: 380px; background: #021a10; border: 2px solid #00e5a0;
+  width: 100%; max-width: 380px; background: #0d1a13; border: 2px solid #00e5a0;
   border-radius: 22px; padding: 24px 22px; display: none; flex-direction: column;
-  gap: 14px; animation: pop 0.35s cubic-bezier(.17,.67,.35,1.3); margin-bottom: 16px;
+  gap: 4px; animation: pop 0.35s cubic-bezier(.17,.67,.35,1.3); margin-bottom: 16px;
 }
 .analysis-result.error { background: #1a0008; border-color: #ff4d6d; }
-.ar-header { display: flex; align-items: center; gap: 12px; }
+.ar-header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
 .ar-icon { font-size: 32px; }
 .ar-title { font-size: 18px; font-weight: 800; color: #00e5a0; }
 .analysis-result.error .ar-title { color: #ff4d6d; }
-.ar-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 14px; }
-.ar-row:last-of-type { border-bottom: none; }
-.ar-row .ar-label { color: #9999bb; }
-.ar-row .ar-val   { font-weight: 800; color: #f0f0f5; }
-.ar-puffer { text-align: center; padding-top: 12px; border-top: 1px solid rgba(0,229,160,0.2); }
+.ar-sub { font-size: 12px; color: #555570; }
+
+/* Abgleich-Zeilen */
+.ar-section-title {
+  font-size: 10px; font-weight: 700; color: #3a3a55;
+  text-transform: uppercase; letter-spacing: 1.5px;
+  margin: 14px 0 6px;
+}
+.ar-status-row {
+  display: flex; align-items: center; padding: 5px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04); gap: 6px;
+}
+.ar-status-row:last-child { border-bottom: none; }
+.ar-status-icon { font-size: 12px; width: 18px; flex-shrink: 0; text-align: center; }
+.ar-status-label {
+  flex: 1; font-size: 13px; color: #9999bb;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ar-status-val { font-size: 13px; font-weight: 700; color: #f0f0f5; white-space: nowrap; }
+.ar-status-val.ok   { color: #00e5a0; }
+.ar-status-val.warn { color: #ffaa00; }
+.ar-status-val.miss { color: #3a3a55; font-weight: 400; font-style: italic; }
+.ar-diff-note { font-size: 11px; color: #ffaa00; padding: 2px 0 6px 24px; }
+
+/* Puffer-Box in Analyse */
+.ar-puffer {
+  text-align: center; padding: 16px 0 8px;
+  border-top: 1px solid rgba(0,229,160,0.15);
+  margin-top: 10px;
+}
 .ar-puffer-label { font-size: 12px; color: #555570; margin-bottom: 6px; }
 .ar-puffer-val { font-size: 40px; font-weight: 800; color: #00e5a0; letter-spacing: -2px; }
-.ar-hint { font-size: 12px; color: #9999bb; line-height: 1.5; font-style: italic; }
+.ar-hint { font-size: 12px; color: #9999bb; line-height: 1.5; font-style: italic; padding-top: 4px; }
 
 /* ─── Loading ─── */
 .upload-loading {
@@ -269,7 +294,7 @@ h1 { font-family: 'DM Serif Display', serif; font-size: 28px; text-align: center
     ondrop="handleDrop(event)">
     <div class="upload-icon">📤</div>
     <div class="upload-text">PDF hochladen</div>
-    <div class="upload-sub">Kontoauszug · Claude berechnet deinen Puffer automatisch</div>
+    <div class="upload-sub">Kontoauszug hochladen · Claude prüft alle Fixkosten automatisch</div>
   </div>
   <input type="file" id="pdf-input" accept=".pdf" style="display:none" onchange="handlePDFUpload(this.files[0])">
 </div>
@@ -286,16 +311,16 @@ h1 { font-family: 'DM Serif Display', serif; font-size: 28px; text-align: center
     <span class="ar-icon" id="ar-icon">📊</span>
     <div>
       <div class="ar-title" id="ar-title"></div>
-      <div style="font-size:12px; color:#555570;" id="ar-sub"></div>
+      <div class="ar-sub" id="ar-sub"></div>
     </div>
   </div>
   <div id="ar-rows"></div>
   <div class="ar-puffer" id="ar-puffer-section">
-    <div class="ar-puffer-label">Verfügbarer Puffer</div>
+    <div class="ar-puffer-label">Verfügbarer Puffer diesen Monat</div>
     <div class="ar-puffer-val" id="ar-puffer-val"></div>
   </div>
   <div class="ar-hint" id="ar-hint"></div>
-  <button class="check-btn" id="ar-adopt-btn" onclick="adoptPuffer()">Puffer übernehmen ✓</button>
+  <button class="check-btn" id="ar-adopt-btn" onclick="adoptPuffer()" style="margin-top:8px;">Puffer übernehmen ✓</button>
 </div>
 
 <!-- Settings Bottom-Sheet -->
@@ -304,14 +329,14 @@ h1 { font-family: 'DM Serif Display', serif; font-size: 28px; text-align: center
     <div class="settings-handle"></div>
     <span class="settings-title">⚙️ Einstellungen</span>
 
-    <div class="settings-section">Finanzen</div>
+    <div class="settings-section">Finanzen (Überschreiben)</div>
     <div class="settings-field">
       <label>Monatliches Nettogehalt (€)</label>
-      <input type="text" id="s-gehalt" inputmode="decimal" placeholder="4845" />
+      <input type="text" id="s-gehalt" inputmode="decimal" placeholder="4845.28" />
     </div>
     <div class="settings-field">
       <label>Verfügbarer Puffer pro Monat (€)</label>
-      <input type="text" id="s-puffer" inputmode="decimal" placeholder="96" />
+      <input type="text" id="s-puffer" inputmode="decimal" placeholder="90.85" />
     </div>
     <div class="settings-field">
       <label>Name(n)</label>
@@ -338,8 +363,32 @@ if (typeof pdfjsLib !== 'undefined') {
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
 }
 
+/* ─── Referenz-Finanzdaten Benjamin Hess ─── */
+const GEHALT_SOLL  = 4845.28;
+const PUFFER_SOLL  = 90.85;
+
+const FIXKOSTEN_REF = [
+  { label: 'Miete kalt',              soll: 1500.00, empfaenger: 'Schamma' },
+  { label: 'Gas',                     soll:  170.00, empfaenger: 'Knauber' },
+  { label: 'Strom',                   soll:  100.00, empfaenger: '' },
+  { label: 'Wasser + Wasserfilter',   soll:   55.00, empfaenger: 'Volkswasser' },
+  { label: 'Müllabholung',            soll:   40.00, empfaenger: '' },
+  { label: 'Krankenversicherung',     soll:  689.48, empfaenger: 'uniVersa' },
+  { label: 'Fitness',                 soll:   36.00, empfaenger: 'MYNEOpur' },
+  { label: 'Internet',                soll:   53.00, empfaenger: '1&1' },
+  { label: 'Apple Abos',              soll:   65.00, empfaenger: 'Apple' },
+  { label: 'Instagram Verified',      soll:   16.99, empfaenger: 'Meta' },
+  { label: 'CAYA Briefkasten',        soll:   12.99, empfaenger: 'CAYA' },
+  { label: 'Gmail 100GB',             soll:    1.99, empfaenger: 'Google' },
+  { label: 'Finanzguru Plus',         soll:    0.99, empfaenger: 'Finanzguru' },
+  { label: 'ALDI Talk',               soll:    2.99, empfaenger: 'ALDI' },
+  { label: 'TF Bank Rate',            soll:  310.00, empfaenger: 'TF Bank' },
+  { label: 'Kindesunterhalt',         soll: 1000.00, empfaenger: 'Rüya' },
+  { label: 'Lebensmittel & Drogerie', soll:  700.00, empfaenger: '' },
+];
+
 /* ─── CONFIG ─── */
-const DEFAULTS = { gehalt: 4845, puffer: 96, namen: 'Benjamin & Victoria' };
+const DEFAULTS = { gehalt: GEHALT_SOLL, puffer: PUFFER_SOLL, namen: 'Benjamin & Victoria' };
 const CONFIG = {
   gehalt: parseFloat(localStorage.getItem('bc_gehalt')) || DEFAULTS.gehalt,
   puffer: parseFloat(localStorage.getItem('bc_puffer')) || DEFAULTS.puffer,
@@ -349,7 +398,16 @@ const CONFIG = {
 
 const MONATE      = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
 const MONATE_LANG = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
-const fmtEuro = n => Math.round(n).toLocaleString('de-DE') + ' €';
+const fmtEuro = n => {
+  const abs = Math.abs(n);
+  const sign = n < 0 ? '−' : '';
+  return sign + Math.round(abs).toLocaleString('de-DE') + ' €';
+};
+const fmtEuroCent = n => {
+  const abs = Math.abs(n);
+  const sign = n < 0 ? '−' : '';
+  return sign + abs.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+};
 
 function parseInput(value) {
   const c = value.replace(/[^\d.,]/g, '');
@@ -369,8 +427,8 @@ function sparplanRows(monate) {
 function initUI() {
   const now = new Date();
   document.querySelector('.subtitle').textContent = `${CONFIG.namen} · Stand ${MONATE_LANG[now.getMonth()]} ${now.getFullYear()}`;
-  document.querySelector('.g-amount').textContent = fmtEuro(CONFIG.gehalt);
-  document.getElementById('puffer-info').textContent = `Verfügbarer Puffer diesen Monat: ${fmtEuro(CONFIG.puffer)}`;
+  document.querySelector('.g-amount').textContent = fmtEuroCent(CONFIG.gehalt);
+  document.getElementById('puffer-info').textContent = `Verfügbarer Puffer diesen Monat: ${fmtEuroCent(CONFIG.puffer)}`;
 }
 
 /* ─── Live Balken ─── */
@@ -430,11 +488,11 @@ function checkBudget() {
 
   amountEl.textContent = fmtEuro(amount);
   const n = Math.ceil(amount / p);
-  const cond = `⚠️ Voraussetzung: Die ${fmtEuro(p)}, die jeden Monat übrig bleiben, nicht anfassen!`;
+  const cond = `⚠️ Voraussetzung: Die ${fmtEuroCent(p)}, die jeden Monat übrig bleiben, nicht anfassen!`;
 
   if (amount <= p) {
     result.classList.add('green'); icon.textContent = '✅'; title.textContent = 'Ja, kein Problem!';
-    msg.innerHTML = `Passt rein! Danach hast du noch <strong>${fmtEuro(p - amount)}</strong> übrig diesen Monat.`;
+    msg.innerHTML = `Passt rein! Danach hast du noch <strong>${fmtEuroCent(p - amount)}</strong> übrig diesen Monat.`;
   } else if (n === 2) {
     result.classList.add('orange'); icon.textContent = '⏳'; title.textContent = 'Fast – noch 1 Monat sparen!';
     msg.innerHTML = `<strong>${fmtEuro(amount)}</strong> geht diesen Monat noch nicht – aber nach dem nächsten Gehalt schon!`;
@@ -472,12 +530,12 @@ function closeSettings() { document.getElementById('settings-overlay').classList
 function overlayClick(e) { if (e.target === document.getElementById('settings-overlay')) closeSettings(); }
 function saveSettings() {
   const gehalt = parseInput(document.getElementById('s-gehalt').value);
-  const puffer = parseInput(document.getElementById('s-puffer').value);
+  const puffer = parseFloat(document.getElementById('s-puffer').value.replace(',', '.'));
   const namen  = document.getElementById('s-namen').value.trim();
   const apiKey = document.getElementById('s-apikey').value.trim();
 
   if (!isNaN(gehalt) && gehalt > 0) { CONFIG.gehalt = gehalt; localStorage.setItem('bc_gehalt', gehalt); }
-  if (!isNaN(puffer) && puffer > 0) { CONFIG.puffer = puffer; localStorage.setItem('bc_puffer', puffer); }
+  if (!isNaN(puffer) && puffer >= 0) { CONFIG.puffer = puffer; localStorage.setItem('bc_puffer', puffer); }
   if (namen) { CONFIG.namen = namen; localStorage.setItem('bc_namen', namen); }
   if (apiKey) { CONFIG.apiKey = apiKey; localStorage.setItem('bc_apikey', apiKey); }
 
@@ -506,7 +564,6 @@ async function handlePDFUpload(file) {
     return;
   }
 
-  // UI: Loading
   document.getElementById('upload-loading').style.display = 'block';
   document.getElementById('analysis-result').style.display = 'none';
   document.getElementById('upload-zone').style.opacity = '0.4';
@@ -538,33 +595,57 @@ async function extractPDFText(file) {
 }
 
 async function callClaudeAPI(bankText) {
+  const fixkostenListe = FIXKOSTEN_REF.map((f, i) =>
+    `${i + 1}. "${f.label}": ${f.soll.toFixed(2)} €${f.empfaenger ? ' (Empfänger enthält: "' + f.empfaenger + '")' : ''}`
+  ).join('\n');
+
   const prompt = `Du analysierst einen deutschen Kontoauszug für Benjamin Hess.
 
-Monatliche Fixkosten (bereits im Budget eingeplant, NICHT als diskretionär werten):
-- Miete & Nebenkosten: ~2.000 €
-- Krankenversicherung: ~689 €
-- Kindesunterhalt: ~1.000 €
-- Lebensmittel & Drogerie: bis 700 €
-- Abos & Digital: bis 99 €
-- Fitness: ~36 €
-- Schuldenrückzahlung: ~310 €
-- Monatlicher Puffer (Budget): ${CONFIG.puffer} €
+REFERENZ – Erwartetes Nettogehalt: ${GEHALT_SOLL.toFixed(2)} € (von "Glücks Krone GmbH", Eingang ca. 24.-27. des Monats)
 
-Kontoauszug-Text:
-${bankText.substring(0, 8000)}
+REFERENZ – Monatliche Fixkosten (suche JEDE dieser 17 Positionen im Kontoauszug):
+${fixkostenListe}
 
-Analysiere und antworte NUR mit diesem JSON (kein Text davor/danach):
+KONTOAUSZUG-TEXT:
+${bankText.substring(0, 10000)}
+
+AUFGABE:
+1. Finde die Gehalts-Eingangsbuchung (Kredit-Buchung von Glücks Krone GmbH)
+2. Für jede der 17 Fixkosten-Positionen: suche die entsprechende Abbuchung und notiere den tatsächlichen Betrag (toleriere leichte Namensabweichungen)
+3. Liste alle Ausgaben die keiner der 17 Positionen zugeordnet werden konnten als "sonstige_ausgaben"
+4. Berechne: puffer_verfuegbar = gehalt_gefunden − alle Ausgaben zusammen
+
+Antworte NUR mit diesem JSON (kein Text davor oder danach):
 {
   "monat": "Monat Jahr",
   "transaktionen_gefunden": Zahl,
+  "gehalt_gefunden": Zahl_oder_null,
+  "fixkosten": [
+    { "label": "Miete kalt", "soll": 1500.00, "gefunden": Zahl_oder_null },
+    { "label": "Gas", "soll": 170.00, "gefunden": Zahl_oder_null },
+    { "label": "Strom", "soll": 100.00, "gefunden": Zahl_oder_null },
+    { "label": "Wasser + Wasserfilter", "soll": 55.00, "gefunden": Zahl_oder_null },
+    { "label": "Müllabholung", "soll": 40.00, "gefunden": Zahl_oder_null },
+    { "label": "Krankenversicherung", "soll": 689.48, "gefunden": Zahl_oder_null },
+    { "label": "Fitness", "soll": 36.00, "gefunden": Zahl_oder_null },
+    { "label": "Internet", "soll": 53.00, "gefunden": Zahl_oder_null },
+    { "label": "Apple Abos", "soll": 65.00, "gefunden": Zahl_oder_null },
+    { "label": "Instagram Verified", "soll": 16.99, "gefunden": Zahl_oder_null },
+    { "label": "CAYA Briefkasten", "soll": 12.99, "gefunden": Zahl_oder_null },
+    { "label": "Gmail 100GB", "soll": 1.99, "gefunden": Zahl_oder_null },
+    { "label": "Finanzguru Plus", "soll": 0.99, "gefunden": Zahl_oder_null },
+    { "label": "ALDI Talk", "soll": 2.99, "gefunden": Zahl_oder_null },
+    { "label": "TF Bank Rate", "soll": 310.00, "gefunden": Zahl_oder_null },
+    { "label": "Kindesunterhalt", "soll": 1000.00, "gefunden": Zahl_oder_null },
+    { "label": "Lebensmittel & Drogerie", "soll": 700.00, "gefunden": Zahl_oder_null }
+  ],
+  "sonstige_ausgaben": [
+    { "label": "Empfänger/Beschreibung", "betrag": Zahl }
+  ],
   "ausgaben_gesamt": Zahl,
-  "fixkosten_identifiziert": Zahl,
-  "diskretionaere_ausgaben": Zahl,
   "puffer_verfuegbar": Zahl,
-  "hinweis": "1 Satz Erklärung was gefunden wurde"
-}
-
-puffer_verfuegbar = ${CONFIG.puffer} - diskretionaere_ausgaben (kann negativ sein)`;
+  "hinweis": "1-2 kurze Sätze was auffällt oder wichtig ist"
+}`;
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -576,7 +657,7 @@ puffer_verfuegbar = ${CONFIG.puffer} - diskretionaere_ausgaben (kann negativ sei
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 512,
+      max_tokens: 1500,
       messages: [{ role: 'user', content: prompt }]
     })
   });
@@ -601,25 +682,81 @@ function showAnalysisResult(r) {
   el.className = 'analysis-result';
   el.style.display = 'flex';
 
-  document.getElementById('ar-icon').textContent = r.puffer_verfuegbar >= 0 ? '✅' : '⚠️';
+  const puffer = r.puffer_verfuegbar ?? 0;
+  document.getElementById('ar-icon').textContent = puffer >= 0 ? '✅' : '⚠️';
   document.getElementById('ar-title').textContent = r.monat || 'Analyse abgeschlossen';
-  document.getElementById('ar-sub').textContent   = `${r.transaktionen_gefunden || '?'} Transaktionen gefunden`;
+  document.getElementById('ar-sub').textContent   = `${r.transaktionen_gefunden ?? '?'} Transaktionen gefunden`;
 
-  document.getElementById('ar-rows').innerHTML = `
-    <div class="ar-row"><span class="ar-label">Ausgaben gesamt</span><span class="ar-val">${fmtEuro(r.ausgaben_gesamt || 0)}</span></div>
-    <div class="ar-row"><span class="ar-label">Fixkosten (budgetiert)</span><span class="ar-val">${fmtEuro(r.fixkosten_identifiziert || 0)}</span></div>
-    <div class="ar-row"><span class="ar-label">Diskretionäre Ausgaben</span><span class="ar-val" style="color:${r.diskretionaere_ausgaben > CONFIG.puffer ? '#ff4d6d' : '#ffaa00'}">${fmtEuro(r.diskretionaere_ausgaben || 0)}</span></div>
-  `;
+  let html = '';
 
-  const puffer = r.puffer_verfuegbar;
-  document.getElementById('ar-puffer-val').textContent = fmtEuro(puffer);
-  document.getElementById('ar-puffer-val').style.color = puffer >= 0 ? '#00e5a0' : '#ff4d6d';
+  /* Gehalt */
+  if (r.gehalt_gefunden !== null && r.gehalt_gefunden !== undefined) {
+    const diff = r.gehalt_gefunden - GEHALT_SOLL;
+    const ok = Math.abs(diff) < 1;
+    html += `<div class="ar-section-title">Eingang</div>`;
+    html += `<div class="ar-status-row">
+      <span class="ar-status-icon">${ok ? '✅' : '⚠️'}</span>
+      <span class="ar-status-label">Gehalt</span>
+      <span class="ar-status-val ${ok ? 'ok' : 'warn'}">${fmtEuroCent(r.gehalt_gefunden)}</span>
+    </div>`;
+    if (!ok) {
+      html += `<div class="ar-diff-note">Soll: ${fmtEuroCent(GEHALT_SOLL)} · Diff: ${diff > 0 ? '+' : ''}${fmtEuroCent(diff)}</div>`;
+    }
+  }
+
+  /* Fixkosten */
+  if (r.fixkosten && r.fixkosten.length > 0) {
+    html += `<div class="ar-section-title">Fixkosten (${r.fixkosten.filter(f => f.gefunden !== null && f.gefunden !== undefined).length}/${r.fixkosten.length} gefunden)</div>`;
+    r.fixkosten.forEach(f => {
+      let icon, cls, val;
+      if (f.gefunden === null || f.gefunden === undefined) {
+        icon = '❓'; cls = 'miss'; val = 'nicht gefunden';
+      } else {
+        const diff = Math.abs(f.gefunden - f.soll);
+        if (diff < 2) {
+          icon = '✅'; cls = 'ok'; val = fmtEuroCent(f.gefunden);
+        } else {
+          icon = '⚠️'; cls = 'warn'; val = `${fmtEuroCent(f.gefunden)} (Soll ${fmtEuroCent(f.soll)})`;
+        }
+      }
+      html += `<div class="ar-status-row">
+        <span class="ar-status-icon">${icon}</span>
+        <span class="ar-status-label">${f.label}</span>
+        <span class="ar-status-val ${cls}">${val}</span>
+      </div>`;
+    });
+  }
+
+  /* Sonstige Ausgaben */
+  if (r.sonstige_ausgaben && r.sonstige_ausgaben.length > 0) {
+    const summe = r.sonstige_ausgaben.reduce((s, x) => s + (x.betrag || 0), 0);
+    html += `<div class="ar-section-title">Sonstige Ausgaben (${fmtEuro(summe)})</div>`;
+    r.sonstige_ausgaben.forEach(s => {
+      html += `<div class="ar-status-row">
+        <span class="ar-status-icon">💸</span>
+        <span class="ar-status-label">${s.label}</span>
+        <span class="ar-status-val warn">${fmtEuroCent(s.betrag)}</span>
+      </div>`;
+    });
+  }
+
+  document.getElementById('ar-rows').innerHTML = html;
+
+  /* Puffer */
+  document.getElementById('ar-puffer-section').style.display = '';
+  const pufferEl = document.getElementById('ar-puffer-val');
+  pufferEl.textContent = fmtEuroCent(puffer);
+  pufferEl.style.color = puffer >= 0 ? '#00e5a0' : '#ff4d6d';
+
   document.getElementById('ar-hint').textContent = r.hinweis || '';
 
   _lastPuffer = puffer;
-  document.getElementById('ar-adopt-btn').style.display = puffer >= 0 ? 'block' : 'none';
+  const btn = document.getElementById('ar-adopt-btn');
+  btn.style.display = 'block';
+  btn.disabled = false;
+  btn.textContent = 'Puffer übernehmen ✓';
 
-  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function showAnalysisError(msg) {
@@ -637,14 +774,16 @@ function showAnalysisError(msg) {
 
 function adoptPuffer() {
   if (_lastPuffer === null) return;
-  CONFIG.puffer = Math.max(0, Math.round(_lastPuffer));
-  localStorage.setItem('bc_puffer', CONFIG.puffer);
+  const rounded = Math.max(0, parseFloat(_lastPuffer.toFixed(2)));
+  CONFIG.puffer = rounded;
+  localStorage.setItem('bc_puffer', rounded);
   initUI();
-  document.getElementById('ar-adopt-btn').textContent = `✓ Puffer auf ${fmtEuro(CONFIG.puffer)} gesetzt!`;
-  document.getElementById('ar-adopt-btn').disabled = true;
+  const btn = document.getElementById('ar-adopt-btn');
+  btn.textContent = `✓ Puffer auf ${fmtEuroCent(rounded)} gesetzt!`;
+  btn.disabled = true;
   setTimeout(() => {
-    document.getElementById('ar-adopt-btn').textContent = 'Puffer übernehmen ✓';
-    document.getElementById('ar-adopt-btn').disabled = false;
+    btn.textContent = 'Puffer übernehmen ✓';
+    btn.disabled = false;
   }, 3000);
 }
 
