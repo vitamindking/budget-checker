@@ -609,6 +609,7 @@ function confirmSpend() {
   const btn = document.getElementById('confirm-spend-btn');
   btn.textContent = `✓ ${fmtEuroCent(amount)} gebucht`; btn.classList.add('done'); btn.disabled = true;
   _pendingConfirm = null;
+  touchLocal();
   syncPush();
 }
 
@@ -747,6 +748,7 @@ function saveSettings() {
   selectTopf(CONFIG.aktiverTopf);
   document.getElementById('result').style.display = 'none';
   renderSchuldenplan();
+  touchLocal();
   syncPush();
 }
 
@@ -1005,6 +1007,7 @@ function abziehenVonTopf(topf, betrag, idx) {
   }
   if (btn) { btn.textContent = '✓ abgezogen'; btn.classList.add('done'); }
   updateTopfUI();
+  touchLocal();
   syncPush();
 }
 
@@ -1029,11 +1032,16 @@ function adoptPuffer() {
   updateTopfUI(); initUI();
   const btn = document.getElementById('ar-adopt-btn');
   btn.textContent = `✓ Puffer auf ${fmtEuroCent(rounded)} gesetzt!`; btn.disabled = true;
+  touchLocal();
   syncPush();
   setTimeout(() => { btn.textContent = 'Puffer übernehmen ✓'; btn.disabled = false; }, 3000);
 }
 
 /* ─── Geräte-Sync ─── */
+function touchLocal() {
+  localStorage.setItem('bc_updated_at', new Date().toISOString());
+}
+
 async function syncPush() {
   if (!CONFIG.syncKey || !CONFIG.syncBin) return;
   const data = {
@@ -1065,6 +1073,13 @@ async function syncPull() {
     });
     if (!resp.ok) return;
     const { record } = await resp.json();
+
+    // Timestamp-Check: lokale Änderung neuer als Remote → lokal gewinnt, Push statt Pull
+    const localTs  = localStorage.getItem('bc_updated_at') || '1970-01-01T00:00:00.000Z';
+    const remoteTs = record.updatedAt                      || '1970-01-01T00:00:00.000Z';
+    if (localTs > remoteTs) { syncPush(); return; }
+    localStorage.setItem('bc_updated_at', remoteTs);
+
     if (record.puffer !== undefined) {
       if (!record.mig_aok1) {
         // Alter JSONBin-Stand (vor AOK-Migration): ehrlichen Referenzwert setzen
