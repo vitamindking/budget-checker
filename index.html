@@ -446,6 +446,13 @@ if (!localStorage.getItem('bc_mig_mai26_v1')) {
   localStorage.setItem('bc_topf_notfall',   652.68);
   localStorage.setItem('bc_mig_mai26_v1', '1');
 }
+// One-time migration: Easy Bank 877,44€ total (377,44+500) — Verteilung neu berechnet
+if (!localStorage.getItem('bc_mig_eb500_v1')) {
+  localStorage.setItem('bc_topf_hausinvest', 521.39);
+  localStorage.setItem('bc_topf_notfall',    402.68);
+  localStorage.setItem('bc_puffer',          221.38);
+  localStorage.setItem('bc_mig_eb500_v1', '1');
+}
 
 const _g = parseFloat(localStorage.getItem('bc_gehalt'));
 const _p = parseFloat(localStorage.getItem('bc_puffer'));
@@ -1170,6 +1177,7 @@ async function syncPush() {
     mig_pdf_reset_v1: true,
     mig_zulage_korrektur_v1: true,
     mig_mai26_v1: true,
+    mig_eb500_v1: true,
     toepfeRates: { hausinvest: CONFIG.toepfe.hausinvestRate, notfall: CONFIG.toepfe.notfallRate },
     updatedAt: new Date().toISOString()
   };
@@ -1233,6 +1241,16 @@ async function syncPull() {
       localStorage.setItem('bc_topf_notfall',    222.99);
       localStorage.setItem('bc_aok_schuld',      SCHULDEN_REF.aok.betrag);
       localStorage.removeItem('bc_last_analysis');
+      syncPush();
+    }
+    // One-time migration: Easy Bank 877,44€ total — Verteilung korrigiert (JSONBin-Seite)
+    if (!record.mig_eb500_v1) {
+      CONFIG.toepfe.hausinvest = 521.39;
+      CONFIG.toepfe.notfall    = 402.68;
+      CONFIG.puffer            = 221.38;
+      localStorage.setItem('bc_topf_hausinvest', 521.39);
+      localStorage.setItem('bc_topf_notfall',    402.68);
+      localStorage.setItem('bc_puffer',          221.38);
       syncPush();
     }
     // One-time migration: Mai 2026 Korrekturen (JSONBin-Seite)
