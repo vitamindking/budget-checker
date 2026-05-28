@@ -862,6 +862,9 @@ async function callClaudeAPI(bankText) {
   const fixkostenListe = FIXKOSTEN_REF.map((f, i) =>
     `${i + 1}. "${f.label}": ${f.soll.toFixed(2)} €${f.empfaenger ? ' (Empfänger: "' + f.empfaenger + '")' : ''}`
   ).join('\n');
+  const fixkostenTemplate = FIXKOSTEN_REF.map(f =>
+    `    { "label": "${f.label}", "soll": ${f.soll.toFixed(2)}, "gefunden": Zahl_oder_null }`
+  ).join(',\n');
 
   const prompt = `Du analysierst einen deutschen Kontoauszug für Benjamin Hess.
 
@@ -891,7 +894,9 @@ AUFGABE:
 1. Finde die Gehalts-Eingangsbuchung (nur Eingang von Glücks Krone GmbH)
 2. Für jede der 18 Fixkosten: suche die Abbuchung und notiere den Betrag
 3. Liste echte Verbraucherausgaben als "sonstige_ausgaben" (keine internen Transfers, keine Abhebungen, keine Rückerstattungen)
-4. Berechne: puffer_verfuegbar = gehalt_gefunden + sonstige_einnahmen − fixkosten_gesamt − sonstige_ausgaben_gesamt
+4. Berechne:
+   fixkosten_gesamt = Summe der gefunden-Beträge (NUR wo gefunden != null — nicht-gefundene Positionen zählen als 0, NICHT als soll-Wert)
+   puffer_verfuegbar = gehalt_gefunden + sonstige_einnahmen − fixkosten_gesamt − sonstige_ausgaben_gesamt
 
 Antworte NUR mit diesem JSON:
 {
@@ -899,24 +904,7 @@ Antworte NUR mit diesem JSON:
   "transaktionen_gefunden": Zahl,
   "gehalt_gefunden": Zahl_oder_null,
   "fixkosten": [
-    { "label": "Miete kalt", "soll": 1500.00, "gefunden": Zahl_oder_null },
-    { "label": "Gas", "soll": 170.00, "gefunden": Zahl_oder_null },
-    { "label": "Strom", "soll": 100.00, "gefunden": Zahl_oder_null },
-    { "label": "Wasser + Wasserfilter", "soll": 55.00, "gefunden": Zahl_oder_null },
-    { "label": "Müllabholung", "soll": 40.00, "gefunden": Zahl_oder_null },
-    { "label": "Krankenversicherung", "soll": 689.48, "gefunden": Zahl_oder_null },
-    { "label": "Fitness", "soll": 36.00, "gefunden": Zahl_oder_null },
-    { "label": "Internet", "soll": 53.00, "gefunden": Zahl_oder_null },
-    { "label": "Apple Abos", "soll": 65.00, "gefunden": Zahl_oder_null },
-    { "label": "Instagram Verified", "soll": 16.99, "gefunden": Zahl_oder_null },
-    { "label": "CAYA Briefkasten", "soll": 12.99, "gefunden": Zahl_oder_null },
-    { "label": "Gmail 100GB", "soll": 1.99, "gefunden": Zahl_oder_null },
-    { "label": "Finanzguru Plus", "soll": 0.99, "gefunden": Zahl_oder_null },
-    { "label": "ALDI Talk", "soll": 2.99, "gefunden": Zahl_oder_null },
-    { "label": "TF Bank Rate", "soll": 310.00, "gefunden": Zahl_oder_null },
-    { "label": "AOK Rückzahlung", "soll": 100.00, "gefunden": Zahl_oder_null },
-    { "label": "Kindesunterhalt", "soll": 1000.00, "gefunden": Zahl_oder_null },
-    { "label": "Lebensmittel & Drogerie", "soll": 700.00, "gefunden": Zahl_oder_null }
+${fixkostenTemplate}
   ],
   "sonstige_ausgaben": [
     { "label": "Beschreibung", "betrag": Zahl, "topf": "monatlich|hausinvest|notfall" }
