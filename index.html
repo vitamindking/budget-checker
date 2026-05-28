@@ -577,9 +577,9 @@ function updateTopfUI() {
   document.getElementById('topf-betrag-monatlich').textContent  = fmtEuroCent(CONFIG.puffer);
   document.getElementById('topf-betrag-hausinvest').textContent = fmtEuroCent(CONFIG.toepfe.hausinvest);
   document.getElementById('topf-betrag-notfall').textContent    = fmtEuroCent(CONFIG.toepfe.notfall);
-  updateTopfBar('monatlich',  CONFIG.puffer,              150);
-  updateTopfBar('hausinvest', CONFIG.toepfe.hausinvest,   600);
-  updateTopfBar('notfall',    CONFIG.toepfe.notfall,       600);
+  updateTopfBar('monatlich',  CONFIG.puffer,              PUFFER_SOLL);
+  updateTopfBar('hausinvest', CONFIG.toepfe.hausinvest,   300.00);
+  updateTopfBar('notfall',    CONFIG.toepfe.notfall,      222.99);
 }
 
 function initUI() {
