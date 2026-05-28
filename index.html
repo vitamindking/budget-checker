@@ -35,19 +35,18 @@ h1 { font-size: 26px; font-weight: 800; color: #1A1A2E; letter-spacing: -0.5px; 
 
 /* ─── Töpfe ─── */
 .toepfe-row { width: 100%; max-width: 380px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 12px; }
-.topf-btn { background: #fff; border: 2px solid transparent; border-radius: 16px; padding: 14px 10px 10px; text-align: center; cursor: pointer; transition: all 0.2s; user-select: none; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+.topf-btn { background: #fff; border: 2px solid transparent; border-radius: 16px; padding: 12px 8px 10px; text-align: center; cursor: pointer; transition: all 0.2s; user-select: none; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
 .topf-btn:active { transform: scale(0.97); }
 .topf-btn.active { border-color: #00C896; box-shadow: 0 4px 18px rgba(0,200,150,0.14); }
 .topf-btn.active-warn { border-color: #FFB800; box-shadow: 0 4px 18px rgba(255,184,0,0.14); }
 .topf-btn.active-over { border-color: #FF4757; box-shadow: 0 4px 18px rgba(255,71,87,0.14); }
-.topf-label { font-size: 10px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 5px; }
-.topf-betrag { font-size: 14px; font-weight: 800; color: #00C896; letter-spacing: -0.3px; margin-bottom: 9px; line-height: 1.2; }
-.topf-btn.active-warn .topf-betrag { color: #FFB800; }
-.topf-btn.active-over .topf-betrag { color: #FF4757; }
-.topf-bar-track { width: 100%; height: 4px; background: #F0F2F5; border-radius: 99px; overflow: hidden; }
-.topf-bar-fill { height: 100%; border-radius: 99px; background: #00C896; transition: width 0.45s cubic-bezier(.4,0,.2,1); }
-.topf-bar-fill.bar-warn { background: #FFB800; }
-.topf-bar-fill.bar-red  { background: #FF4757; }
+.topf-label { font-size: 9px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.8px; margin-top: 6px; display: block; }
+.topf-betrag { font-size: 9px; font-weight: 800; color: #1A1A2E; letter-spacing: -0.2px; line-height: 1; }
+.topf-ring-wrap { position: relative; width: 76px; height: 76px; margin: 0 auto; }
+.topf-ring-svg { width: 76px; height: 76px; transform: rotate(-90deg); }
+.topf-ring-track { fill: none; stroke: #F0F2F5; stroke-width: 5; }
+.topf-ring-fill { fill: none; stroke: #00C896; stroke-width: 5; stroke-linecap: round; stroke-dasharray: 188.5; stroke-dashoffset: 188.5; transition: stroke-dashoffset 0.45s cubic-bezier(.4,0,.2,1), stroke 0.3s; }
+.topf-ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 
 /* ─── Karten ─── */
 .card { width: 100%; max-width: 380px; background: #fff; border-radius: 20px; padding: 22px 20px; border: 1px solid #F0F2F5; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 12px; }
@@ -207,19 +206,40 @@ h1 { font-size: 26px; font-weight: 800; color: #1A1A2E; letter-spacing: -0.5px; 
 <!-- Töpfe -->
 <div class="toepfe-row">
   <div class="topf-btn active" id="topf-monatlich" onclick="selectTopf('monatlich')">
+    <div class="topf-ring-wrap">
+      <svg class="topf-ring-svg" viewBox="0 0 76 76" xmlns="http://www.w3.org/2000/svg">
+        <circle class="topf-ring-track" cx="38" cy="38" r="30"/>
+        <circle class="topf-ring-fill" id="topf-ring-monatlich" cx="38" cy="38" r="30"/>
+      </svg>
+      <div class="topf-ring-center">
+        <div class="topf-betrag" id="topf-betrag-monatlich"></div>
+      </div>
+    </div>
     <div class="topf-label">Spielraum</div>
-    <div class="topf-betrag" id="topf-betrag-monatlich"></div>
-    <div class="topf-bar-track"><div class="topf-bar-fill" id="topf-bar-monatlich"></div></div>
   </div>
   <div class="topf-btn" id="topf-hausinvest" onclick="selectTopf('hausinvest')">
+    <div class="topf-ring-wrap">
+      <svg class="topf-ring-svg" viewBox="0 0 76 76" xmlns="http://www.w3.org/2000/svg">
+        <circle class="topf-ring-track" cx="38" cy="38" r="30"/>
+        <circle class="topf-ring-fill" id="topf-ring-hausinvest" cx="38" cy="38" r="30"/>
+      </svg>
+      <div class="topf-ring-center">
+        <div class="topf-betrag" id="topf-betrag-hausinvest"></div>
+      </div>
+    </div>
     <div class="topf-label">Hausinvest.</div>
-    <div class="topf-betrag" id="topf-betrag-hausinvest"></div>
-    <div class="topf-bar-track"><div class="topf-bar-fill" id="topf-bar-hausinvest"></div></div>
   </div>
   <div class="topf-btn" id="topf-notfall" onclick="selectTopf('notfall')">
+    <div class="topf-ring-wrap">
+      <svg class="topf-ring-svg" viewBox="0 0 76 76" xmlns="http://www.w3.org/2000/svg">
+        <circle class="topf-ring-track" cx="38" cy="38" r="30"/>
+        <circle class="topf-ring-fill" id="topf-ring-notfall" cx="38" cy="38" r="30"/>
+      </svg>
+      <div class="topf-ring-center">
+        <div class="topf-betrag" id="topf-betrag-notfall"></div>
+      </div>
+    </div>
     <div class="topf-label">Notfall</div>
-    <div class="topf-betrag" id="topf-betrag-notfall"></div>
-    <div class="topf-bar-track"><div class="topf-bar-fill" id="topf-bar-notfall"></div></div>
   </div>
 </div>
 
@@ -565,12 +585,14 @@ function selectTopf(topf) {
   document.getElementById('puffer-info').textContent = `${label}: ${fmtEuroCent(getAktiverTopfBetrag())} verfügbar`;
 }
 
+const TOPF_CIRC = 2 * Math.PI * 30; // 188.5
+
 function updateTopfBar(id, val, max) {
-  const bar = document.getElementById('topf-bar-' + id);
-  if (!bar) return;
+  const ring = document.getElementById('topf-ring-' + id);
+  if (!ring) return;
   const pct = Math.min(100, Math.max(0, (val / max) * 100));
-  bar.style.width = pct + '%';
-  bar.className = 'topf-bar-fill' + (pct >= 50 ? '' : pct >= 25 ? ' bar-warn' : ' bar-red');
+  ring.style.strokeDashoffset = TOPF_CIRC * (1 - pct / 100);
+  ring.style.stroke = pct >= 50 ? '#00C896' : pct >= 25 ? '#FFB800' : '#FF4757';
 }
 
 function updateTopfUI() {
