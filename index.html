@@ -378,11 +378,11 @@ if (typeof pdfjsLib !== 'undefined') {
 
 /* ─── Referenz-Finanzdaten Benjamin Hess ─── */
 const GEHALT_SOLL = 4845.28;
-const PUFFER_SOLL = 54.87;
+const PUFFER_SOLL = 63.86;
 
 const SCHULDEN_REF = {
-  tfBank:   { label: 'TF Bank Sofortgeld', betrag: 6200.00, rate: 310.00 },
-  easyBank: { label: 'Easy Bank',          betrag: 377.44,  rate: 0 },
+  tfBank:   { label: 'TF Bank Sofortgeld', betrag: 5900.00, rate: 320.00 },
+  easyBank: { label: 'Easy Bank',          betrag: 0,       rate: 0 },
   aok:      { label: 'AOK Rückzahlung',    betrag: 2476.66, rate: 100.00 },
 };
 
@@ -400,14 +400,14 @@ const FIXKOSTEN_REF = [
   { label: 'Müllabholung',            soll:   40.00, empfaenger: '' },
   { label: 'Krankenversicherung',     soll:  689.48, empfaenger: 'uniVersa' },
   { label: 'Fitness',                 soll:   36.00, empfaenger: 'MYNEOpur' },
-  { label: 'Internet',                soll:   45.00, empfaenger: '1&1' },
-  { label: 'Apple Abos',              soll:   33.98, empfaenger: 'Apple' },
+  { label: 'Internet',                soll:   50.00, empfaenger: '1&1' },
+  { label: 'iCloud+',                 soll:    9.99, empfaenger: 'Apple' },
   { label: 'Instagram Verified',      soll:   16.99, empfaenger: 'Meta' },
   { label: 'CAYA Briefkasten',        soll:   12.99, empfaenger: 'CAYA' },
   { label: 'Gmail 100GB',             soll:    1.99, empfaenger: 'Google' },
   { label: 'Finanzguru Plus',         soll:    0.99, empfaenger: 'Finanzguru' },
   { label: 'ALDI Talk',               soll:    2.99, empfaenger: 'ALDI' },
-  { label: 'TF Bank Rate',            soll:  310.00, empfaenger: 'TF Bank' },
+  { label: 'TF Bank Rate',            soll:  320.00, empfaenger: 'TF Bank' },
   { label: 'AOK Rückzahlung',         soll:  100.00, empfaenger: 'AOK' },
   { label: 'Kindesunterhalt',         soll: 1000.00, empfaenger: 'Rüya' },
   { label: 'Lebensmittel & Drogerie', soll:  700.00, empfaenger: '' },
@@ -452,6 +452,14 @@ if (!localStorage.getItem('bc_mig_eb500_v1')) {
   localStorage.setItem('bc_topf_notfall',    402.68);
   localStorage.setItem('bc_puffer',          221.38);
   localStorage.setItem('bc_mig_eb500_v1', '1');
+}
+// One-time migration: Juni 2026 — neue Töpfe nach Verrechnung, TF Bank 5900 (Sondertilgung 300), Rate 320
+if (!localStorage.getItem('bc_mig_juni26_v1')) {
+  localStorage.setItem('bc_puffer',          403.76);
+  localStorage.setItem('bc_topf_hausinvest', 403.76);
+  localStorage.setItem('bc_topf_notfall',    807.53);
+  localStorage.setItem('bc_tfbank_schuld',   5900.00);
+  localStorage.setItem('bc_mig_juni26_v1', '1');
 }
 
 const _g = parseFloat(localStorage.getItem('bc_gehalt'));
@@ -1166,6 +1174,7 @@ async function syncPush() {
     mig_zulage_korrektur_v1: true,
     mig_mai26_v1: true,
     mig_eb500_v1: true,
+    mig_juni26_v1: true,
     toepfeRates: { hausinvest: CONFIG.toepfe.hausinvestRate, notfall: CONFIG.toepfe.notfallRate },
     updatedAt: new Date().toISOString()
   };
@@ -1247,6 +1256,18 @@ async function syncPull() {
       CONFIG.toepfe.notfall    = 652.68;
       localStorage.setItem('bc_tfbank_schuld', 6200.00);
       localStorage.setItem('bc_topf_notfall',  652.68);
+      syncPush();
+    }
+    // One-time migration: Juni 2026 (JSONBin-Seite)
+    if (!record.mig_juni26_v1) {
+      CONFIG.puffer            = 403.76;
+      CONFIG.toepfe.hausinvest = 403.76;
+      CONFIG.toepfe.notfall    = 807.53;
+      CONFIG.tfbankSchuld      = 5900.00;
+      localStorage.setItem('bc_puffer',          403.76);
+      localStorage.setItem('bc_topf_hausinvest', 403.76);
+      localStorage.setItem('bc_topf_notfall',    807.53);
+      localStorage.setItem('bc_tfbank_schuld',   5900.00);
       syncPush();
     }
     // One-time migration: Zulage-Korrektur (JSONBin-Seite)
